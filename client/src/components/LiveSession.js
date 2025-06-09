@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
-const SOCKET_SERVER_URL = "http://localhost:5000";
+const SOCKET_SERVER_URL = "https://skillswap-backend-jxyu.onrender.com";
 
 const LiveSession = () => {
   const [socket, setSocket] = useState(null);

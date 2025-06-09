@@ -28,7 +28,7 @@ const Register = () => {
         skills: formData.skills.split(",").map((skill) => skill.trim()),
       };
 
-      await axios.post("http://localhost:5000/api/auth/register", payload);
+      await axios.post("https://skillswap-backend-jxyu.onrender.com/api/auth/register", payload);
       
       alert("Registration successful! Please login.");
       navigate("/login"); // Redirect to login page after successful registration

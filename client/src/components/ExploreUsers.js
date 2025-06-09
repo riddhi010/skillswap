@@ -15,7 +15,7 @@ const ExploreUsers = () => {
       setLoading(true);
       setError("");
       try {
-        const res = await axios.get("http://localhost:5000/api/users", {
+        const res = await axios.get("https://skillswap-backend-jxyu.onrender.com/api/users", {
           params: { role, skill, page, limit: 5 },
         });
         setUsers(res.data.users);
