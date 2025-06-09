@@ -5,6 +5,7 @@ import Dashboard from "./components/Dashboard";
 import ExploreUsers from "./components/ExploreUsers"
 import Profile from "./components/Profile";
 import LiveSession from "./components/LiveSession";
+import Home from "./pages/home";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/explore" element={<ExploreUsers />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/live" element={<LiveSession />} />
+        <Route path="/" element={<Home />} />
         {/* Add more routes here */}
       </Routes>
     </Router>
