@@ -11,6 +11,7 @@ const LiveSession = () => {
 
   const [chatMessages, setChatMessages] = useState([]);
   const [message, setMessage] = useState("");
+  const [remoteSocketId, setRemoteSocketId] = useState(null);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
@@ -28,7 +29,7 @@ const LiveSession = () => {
     }
 
     peerConnection.current = new RTCPeerConnection(servers);
-    // Get user media
+
     localStream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
     if (localVideoRef.current) {
@@ -41,19 +42,26 @@ const LiveSession = () => {
 
     peerConnection.current.ontrack = (event) => {
       if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
+        if (!remoteVideoRef.current.srcObject) {
+          const remoteStream = new MediaStream();
+          remoteStream.addTrack(event.track);
+          remoteVideoRef.current.srcObject = remoteStream;
+        } else {
+          remoteVideoRef.current.srcObject.addTrack(event.track);
+        }
+        remoteVideoRef.current.play().catch((e) => console.warn("Autoplay blocked:", e));
       }
     };
 
     peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && remoteSocketId) {
         socket.emit("ice-candidate", {
-          target: "all",
+          target: remoteSocketId,
           candidate: event.candidate,
         });
       }
     };
-  }, [socket]);
+  }, [remoteSocketId, socket]);
 
   useEffect(() => {
     const newSocket = io(SOCKET_SERVER_URL);
@@ -61,13 +69,16 @@ const LiveSession = () => {
     return () => newSocket.disconnect();
   }, []);
 
-  useEffect(() => {  
+  useEffect(() => {
     if (!socket) return;
 
     socket.on("user-joined", async ({ userId, username: newUser, isInitiator }) => {
+      setRemoteSocketId(userId);
       setChatMessages((prev) => [...prev, { sender: "System", message: `${newUser} joined the room.` }]);
 
-      if (isInitiator && peerConnection.current) {
+      if (!peerConnection.current) await createPeerConnection();
+
+      if (isInitiator) {
         const offer = await peerConnection.current.createOffer();
         await peerConnection.current.setLocalDescription(offer);
         socket.emit("offer", {
@@ -79,36 +90,23 @@ const LiveSession = () => {
     });
 
     socket.on("offer", async ({ sdp, caller }) => {
+      setRemoteSocketId(caller);
       if (!peerConnection.current) await createPeerConnection();
 
-      try {
-        if (peerConnection.current.signalingState === "stable") {
-          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
-          const answer = await peerConnection.current.createAnswer();
-          await peerConnection.current.setLocalDescription(answer);
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await peerConnection.current.createAnswer();
+      await peerConnection.current.setLocalDescription(answer);
 
-          socket.emit("answer", {
-            target: caller,
-            responder: socket.id,
-            sdp: answer,
-          });
-        } else {
-          console.warn("Cannot set offer in current state:", peerConnection.current.signalingState);
-        }
-      } catch (e) {
-        console.error("Failed to handle offer:", e);
-      }
+      socket.emit("answer", {
+        target: caller,
+        responder: socket.id,
+        sdp: answer,
+      });
     });
 
     socket.on("answer", async ({ sdp }) => {
-      try {
-        if (peerConnection.current.signalingState === "have-local-offer") {
-          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
-        } else {
-          console.warn("Skipping answer due to invalid signaling state");
-        }
-      } catch (err) {
-        console.error("Error setting remote answer SDP:", err);
+      if (peerConnection.current.signalingState === "have-local-offer") {
+        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
       }
     });
 
@@ -116,7 +114,7 @@ const LiveSession = () => {
       try {
         await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (e) {
-        console.error("ICE Candidate error:", e);
+        console.error("Error adding ICE candidate", e);
       }
     });
 
@@ -152,6 +150,7 @@ const LiveSession = () => {
       setRoomId("");
       setUsername("");
       setChatMessages([]);
+      setRemoteSocketId(null);
       if (peerConnection.current) {
         peerConnection.current.close();
         peerConnection.current = null;
@@ -229,9 +228,4 @@ const LiveSession = () => {
   );
 };
 
-
 export default LiveSession;
-
-
-
-
