@@ -12,7 +12,11 @@ dotenv.config();
 connectDB();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "https://skillswap-backend-jxyu.onrender.com/",
+  credentials: true,
+}));
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
