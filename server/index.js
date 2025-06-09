@@ -13,7 +13,7 @@ connectDB();
 
 const app = express();
 app.use(cors({
-  origin: "https://skillswap-backend-jxyu.onrender.com/",
+  origin: "https://skillswap-client-jm4y.onrender.com",
   credentials: true,
 }));
 
