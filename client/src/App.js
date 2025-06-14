@@ -6,7 +6,7 @@ import ExploreUsers from "./components/ExploreUsers"
 import Profile from "./components/Profile";
 
 import Home from "./pages/home";
-import JoinSessionForm from "./components/JoinSessionForm";
+
 import LivePage from "./pages/LivePage";
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/explore" element={<ExploreUsers />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/" element={<JoinSessionForm />} />
+        
         <Route path="/live/:username/:roomId" element={<LivePage />} />
         <Route path="/" element={<Home />} />
         {/* Add more routes here */}
