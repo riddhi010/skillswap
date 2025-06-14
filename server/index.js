@@ -40,24 +40,25 @@ const users = {}; // { socketId: username }
 io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
 
-  socket.on("join-room", ({ roomId, username }) => {
-    socket.join(roomId);
-    socket.roomId = roomId;
-    users[socket.id] = username;
+ socket.on("join-room", ({ roomId, username }) => {
+  const existing = rooms[roomId] || [];
+  const initiator = existing.length === 0;
 
-    if (!rooms[roomId]) rooms[roomId] = [];
+  socket.join(roomId);
+  socket.roomId = roomId;
+  users[socket.id] = username;
 
-    // Notify existing users
-    rooms[roomId].forEach((id) => {
-      io.to(id).emit("user-joined", {
-        userId: socket.id,
-        username,
-      });
-      socket.emit("user-joined", {
-        userId: id,
-        username: users[id],
-      });
-    });
+  rooms[roomId] = existing;
+  rooms[roomId].push(socket.id);
+
+  // Notify everyone in room including the new user
+  io.to(roomId).emit("user-joined", {
+    userId: socket.id,
+    username,
+    isInitiator: initiator
+  });
+});
+
 
     rooms[roomId].push(socket.id);
   });
