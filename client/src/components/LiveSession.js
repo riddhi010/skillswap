@@ -31,8 +31,8 @@ const LiveSession = () => {
     peerConnection.current = new RTCPeerConnection(servers);
     console.log("🌐 New RTCPeerConnection created");
 
-    // Local media
     localStream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = localStream.current;
     }
@@ -41,20 +41,23 @@ const LiveSession = () => {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
-    // Remote media
     peerConnection.current.ontrack = (event) => {
-      console.log("📡 ontrack received with streams:", event.streams);
-      if (remoteVideoRef.current && event.streams[0]) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-        remoteVideoRef.current
-          .play()
-          .catch((err) => console.warn("Autoplay blocked:", err));
+      console.log("🎥 ontrack triggered:", event);
+      if (remoteVideoRef.current) {
+        if (!remoteVideoRef.current.srcObject) {
+          const remoteStream = new MediaStream();
+          remoteStream.addTrack(event.track);
+          remoteVideoRef.current.srcObject = remoteStream;
+        } else {
+          remoteVideoRef.current.srcObject.addTrack(event.track);
+        }
+        remoteVideoRef.current.play().catch((e) => console.warn("Autoplay blocked:", e));
       }
     };
 
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate && remoteSocketId) {
-        console.log("✅ ICE candidate:", event.candidate);
+        console.log("❄️ Sending ICE candidate:", event.candidate);
         socket.emit("ice-candidate", {
           target: remoteSocketId,
           candidate: event.candidate,
@@ -63,7 +66,7 @@ const LiveSession = () => {
     };
 
     peerConnection.current.onconnectionstatechange = () => {
-      console.log("🌐 Connection State:", peerConnection.current.connectionState);
+      console.log("✅ PC connection state:", peerConnection.current.connectionState);
     };
   }, [remoteSocketId, socket]);
 
@@ -86,6 +89,7 @@ const LiveSession = () => {
       if (isInitiator) {
         const offer = await peerConnection.current.createOffer();
         await peerConnection.current.setLocalDescription(offer);
+        console.log("📨 Sending offer to:", userId);
         socket.emit("offer", {
           target: userId,
           caller: socket.id,
@@ -102,7 +106,7 @@ const LiveSession = () => {
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
-
+      console.log("📨 Sending answer to:", caller);
       socket.emit("answer", {
         target: caller,
         responder: socket.id,
@@ -111,18 +115,18 @@ const LiveSession = () => {
     });
 
     socket.on("answer", async ({ sdp }) => {
-      console.log("📨 Answer received");
+      console.log("📩 Answer received from responder");
       if (peerConnection.current.signalingState === "have-local-offer") {
         await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
       }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
-      console.log("❄️ ICE Candidate received:", candidate);
+      console.log("❄️ ICE candidate received:", candidate);
       try {
         await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (e) {
-        console.error("❌ Error adding ICE candidate", e);
+        console.error("🚨 Error adding ICE candidate", e);
       }
     });
 
@@ -147,6 +151,7 @@ const LiveSession = () => {
   const joinRoom = async () => {
     if (!roomId || !username) return alert("Enter both Room ID and Username");
     setJoined(true);
+    console.log("🚪 Joining room:", roomId);
     await createPeerConnection();
     socket.emit("join-room", { roomId, username, isInitiator: true });
   };
@@ -154,6 +159,7 @@ const LiveSession = () => {
   const leaveRoom = () => {
     if (socket) {
       socket.emit("leave-room", { roomId, username });
+      console.log("🚪 Leaving room:", roomId);
       setJoined(false);
       setRoomId("");
       setUsername("");
@@ -171,6 +177,7 @@ const LiveSession = () => {
 
   const sendMessage = () => {
     if (message.trim() === "") return;
+    console.log("💬 Sending message:", message);
     socket.emit("chat-message", { roomId, message });
     setChatMessages((msgs) => [...msgs, { sender: "Me", message }]);
     setMessage("");
@@ -206,7 +213,7 @@ const LiveSession = () => {
             </div>
             <div>
               <p>Remote:</p>
-              <video ref={remoteVideoRef} autoPlay playsInline muted style={{ width: 300, border: "1px solid black" }} />
+              <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 300, border: "1px solid black" }} />
             </div>
           </div>
           <div style={{ marginTop: 20 }}>
