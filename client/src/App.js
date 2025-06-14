@@ -7,7 +7,7 @@ import Profile from "./components/Profile";
 
 import Home from "./pages/home";
 
-import LivePage from "./pages/LivePage";
+import LiveSession from "./components/LiveSession";
 
 function App() {
   return (
@@ -19,7 +19,7 @@ function App() {
         <Route path="/explore" element={<ExploreUsers />} />
         <Route path="/profile" element={<Profile />} />
         
-        <Route path="/live/:username/:roomId" element={<LivePage />} />
+        <Route path="/live" element={<LiveSession />} />
         <Route path="/" element={<Home />} />
         {/* Add more routes here */}
       </Routes>
