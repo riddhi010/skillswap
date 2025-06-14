@@ -4,8 +4,10 @@ import Login from "./pages/login";
 import Dashboard from "./components/Dashboard";
 import ExploreUsers from "./components/ExploreUsers"
 import Profile from "./components/Profile";
-import LiveSession from "./components/LiveSession";
+
 import Home from "./pages/home";
+import JoinSessionForm from "./components/JoinSessionForm";
+import LivePage from "./pages/LivePage";
 
 function App() {
   return (
@@ -16,7 +18,8 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/explore" element={<ExploreUsers />} />
         <Route path="/profile" element={<Profile />} />
-        <Route path="/live" element={<LiveSession />} />
+        <Route path="/" element={<JoinSessionForm />} />
+        <Route path="/live/:username/:roomId" element={<LivePage />} />
         <Route path="/" element={<Home />} />
         {/* Add more routes here */}
       </Routes>
