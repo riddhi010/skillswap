@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import JoinSessionForm from "./JoinSessionForm";
 const Dashboard = () => {
   return (
     <div>
@@ -9,7 +10,7 @@ const Dashboard = () => {
         Explore Users
       </Link>
       <Link to="/profile">My Profile</Link>
-      <Link to="/live">Live Session</Link>
+      <Route path="/join-session" element={<JoinSessionForm />} />
 
     </div>
   );
