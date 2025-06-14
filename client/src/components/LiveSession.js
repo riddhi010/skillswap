@@ -29,9 +29,10 @@ const LiveSession = () => {
     }
 
     peerConnection.current = new RTCPeerConnection(servers);
+    console.log("🌐 New RTCPeerConnection created");
 
+    // Local media
     localStream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = localStream.current;
     }
@@ -40,25 +41,29 @@ const LiveSession = () => {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
+    // Remote media
     peerConnection.current.ontrack = (event) => {
-  console.log("📡 ontrack received:", event);
-
-  if (remoteVideoRef.current && event.streams && event.streams[0]) {
-    remoteVideoRef.current.srcObject = event.streams[0];
-    remoteVideoRef.current
-      .play()
-      .catch((err) => console.warn("Autoplay blocked:", err));
-  }
-};
-
+      console.log("📡 ontrack received with streams:", event.streams);
+      if (remoteVideoRef.current && event.streams[0]) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+        remoteVideoRef.current
+          .play()
+          .catch((err) => console.warn("Autoplay blocked:", err));
+      }
+    };
 
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate && remoteSocketId) {
+        console.log("✅ ICE candidate:", event.candidate);
         socket.emit("ice-candidate", {
           target: remoteSocketId,
           candidate: event.candidate,
         });
       }
+    };
+
+    peerConnection.current.onconnectionstatechange = () => {
+      console.log("🌐 Connection State:", peerConnection.current.connectionState);
     };
   }, [remoteSocketId, socket]);
 
@@ -72,6 +77,7 @@ const LiveSession = () => {
     if (!socket) return;
 
     socket.on("user-joined", async ({ userId, username: newUser, isInitiator }) => {
+      console.log("👥 User joined:", userId);
       setRemoteSocketId(userId);
       setChatMessages((prev) => [...prev, { sender: "System", message: `${newUser} joined the room.` }]);
 
@@ -89,6 +95,7 @@ const LiveSession = () => {
     });
 
     socket.on("offer", async ({ sdp, caller }) => {
+      console.log("📨 Offer received from:", caller);
       setRemoteSocketId(caller);
       if (!peerConnection.current) await createPeerConnection();
 
@@ -104,16 +111,18 @@ const LiveSession = () => {
     });
 
     socket.on("answer", async ({ sdp }) => {
+      console.log("📨 Answer received");
       if (peerConnection.current.signalingState === "have-local-offer") {
         await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
       }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
+      console.log("❄️ ICE Candidate received:", candidate);
       try {
         await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (e) {
-        console.error("Error adding ICE candidate", e);
+        console.error("❌ Error adding ICE candidate", e);
       }
     });
 
@@ -197,7 +206,7 @@ const LiveSession = () => {
             </div>
             <div>
               <p>Remote:</p>
-              <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 300, border: "1px solid black" }} />
+              <video ref={remoteVideoRef} autoPlay playsInline muted style={{ width: 300, border: "1px solid black" }} />
             </div>
           </div>
           <div style={{ marginTop: 20 }}>
