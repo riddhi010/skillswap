@@ -41,17 +41,16 @@ const LiveSession = () => {
     });
 
     peerConnection.current.ontrack = (event) => {
-      if (remoteVideoRef.current) {
-        if (!remoteVideoRef.current.srcObject) {
-          const remoteStream = new MediaStream();
-          remoteStream.addTrack(event.track);
-          remoteVideoRef.current.srcObject = remoteStream;
-        } else {
-          remoteVideoRef.current.srcObject.addTrack(event.track);
-        }
-        remoteVideoRef.current.play().catch((e) => console.warn("Autoplay blocked:", e));
-      }
-    };
+  console.log("📡 ontrack received:", event);
+
+  if (remoteVideoRef.current && event.streams && event.streams[0]) {
+    remoteVideoRef.current.srcObject = event.streams[0];
+    remoteVideoRef.current
+      .play()
+      .catch((err) => console.warn("Autoplay blocked:", err));
+  }
+};
+
 
     peerConnection.current.onicecandidate = (event) => {
       if (event.candidate && remoteSocketId) {
