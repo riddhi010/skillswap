@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 
-const SOCKET_SERVER_URL = "http://localhost:5000"; // Change if your backend URL differs
+const SOCKET_SERVER_URL = "https://skillswap-backend-jxyu.onrender.com"; 
 
 const configuration = {
   iceServers: [
