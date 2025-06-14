@@ -1,191 +1,237 @@
-import React, { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { io } from "socket.io-client";
 
-const SOCKET_SERVER_URL = "https://skillswap-backend-jxyu.onrender.com"; 
+const SOCKET_SERVER_URL = "https://skillswap-backend-jxyu.onrender.com";
 
-const configuration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-  ],
-};
+const LiveSession = () => {
+  const [socket, setSocket] = useState(null);
+  const [roomId, setRoomId] = useState("");
+  const [username, setUsername] = useState("");
+  const [joined, setJoined] = useState(false);
 
-const LiveSession = ({ username, roomId }) => {
-  const localVideoRef = useRef();
-  const remoteVideoRef = useRef();
-  const peerConnectionRef = useRef(null);
-  const socketRef = useRef(null);
-  const [messages, setMessages] = useState([]);
-  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState([]);
+  const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    socketRef.current = io(SOCKET_SERVER_URL);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const peerConnection = useRef(null);
+  const localStream = useRef(null);
 
-    socketRef.current.emit("join-room", { roomId, username });
+  const servers = {
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  };
 
-    socketRef.current.on("user-joined", ({ userId, username: otherUser, isInitiator }) => {
-      console.log("User joined:", userId, otherUser, isInitiator);
-
-      if (isInitiator) {
-        createPeerConnection();
-      }
-    });
-
-    socketRef.current.on("offer", async ({ sdp, caller }) => {
-      console.log("Offer received");
-      if (!peerConnectionRef.current) createPeerConnection();
-
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
-      const answer = await peerConnectionRef.current.createAnswer();
-      await peerConnectionRef.current.setLocalDescription(answer);
-
-      socketRef.current.emit("answer", {
-        sdp: peerConnectionRef.current.localDescription,
-        responder: socketRef.current.id,
-        target: caller,
-      });
-    });
-
-    socketRef.current.on("answer", async ({ sdp, responder }) => {
-      console.log("Answer received");
-      await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
-    });
-
-    socketRef.current.on("ice-candidate", async ({ candidate }) => {
-      try {
-        await peerConnectionRef.current.addIceCandidate(candidate);
-      } catch (e) {
-        console.error("Error adding received ice candidate", e);
-      }
-    });
-
-    socketRef.current.on("chat-message", ({ sender, message }) => {
-      setMessages((prev) => [...prev, { sender, message }]);
-    });
-
-    // Get user media
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        localVideoRef.current.srcObject = stream;
-        if (peerConnectionRef.current) {
-          stream.getTracks().forEach((track) => {
-            peerConnectionRef.current.addTrack(track, stream);
-          });
-        }
-      })
-      .catch((err) => {
-        console.error("Error accessing media devices.", err);
-      });
-
-    // Clean up on unmount
-    return () => {
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, [roomId, username]);
-
-  function createPeerConnection() {
-    peerConnectionRef.current = new RTCPeerConnection(configuration);
-
-    peerConnectionRef.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketRef.current.emit("ice-candidate", {
-          candidate: event.candidate,
-          target: null, // Send to all or specific? We'll handle below
-        });
-      }
-    };
-
-    peerConnectionRef.current.ontrack = (event) => {
-      remoteVideoRef.current.srcObject = event.streams[0];
-    };
-
-    // Add local tracks to peer connection
-    const localStream = localVideoRef.current.srcObject;
-    if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        peerConnectionRef.current.addTrack(track, localStream);
-      });
+  const createPeerConnection = useCallback(async () => {
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
     }
 
-    // Initiator creates offer and sends it
-    peerConnectionRef.current.onnegotiationneeded = async () => {
-      try {
-        const offer = await peerConnectionRef.current.createOffer();
-        await peerConnectionRef.current.setLocalDescription(offer);
+    peerConnection.current = new RTCPeerConnection(servers);
+    // Get user media
+    localStream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
 
-        socketRef.current.emit("offer", {
-          sdp: peerConnectionRef.current.localDescription,
-          caller: socketRef.current.id,
-          target: null, // Broadcast or specific peer needed - this needs room logic in backend and frontend
-        });
-      } catch (err) {
-        console.error(err);
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream.current;
+    }
+
+    localStream.current.getTracks().forEach((track) => {
+      peerConnection.current.addTrack(track, localStream.current);
+    });
+
+    peerConnection.current.ontrack = (event) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
       }
     };
-  }
 
-  const handleSendMessage = () => {
-    if (chatInput.trim()) {
-      socketRef.current.emit("chat-message", { roomId, message: chatInput });
-      setMessages((prev) => [...prev, { sender: username, message: chatInput }]);
-      setChatInput("");
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("ice-candidate", {
+          target: "all",
+          candidate: event.candidate,
+        });
+      }
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    const newSocket = io(SOCKET_SERVER_URL);
+    setSocket(newSocket);
+    return () => newSocket.disconnect();
+  }, []);
+
+  useEffect(() => {  
+    if (!socket) return;
+
+    socket.on("user-joined", async ({ userId, username: newUser, isInitiator }) => {
+      setChatMessages((prev) => [...prev, { sender: "System", message: `${newUser} joined the room.` }]);
+
+      if (isInitiator && peerConnection.current) {
+        const offer = await peerConnection.current.createOffer();
+        await peerConnection.current.setLocalDescription(offer);
+        socket.emit("offer", {
+          target: userId,
+          caller: socket.id,
+          sdp: offer,
+        });
+      }
+    });
+
+    socket.on("offer", async ({ sdp, caller }) => {
+      if (!peerConnection.current) await createPeerConnection();
+
+      try {
+        if (peerConnection.current.signalingState === "stable") {
+          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+          const answer = await peerConnection.current.createAnswer();
+          await peerConnection.current.setLocalDescription(answer);
+
+          socket.emit("answer", {
+            target: caller,
+            responder: socket.id,
+            sdp: answer,
+          });
+        } else {
+          console.warn("Cannot set offer in current state:", peerConnection.current.signalingState);
+        }
+      } catch (e) {
+        console.error("Failed to handle offer:", e);
+      }
+    });
+
+    socket.on("answer", async ({ sdp }) => {
+      try {
+        if (peerConnection.current.signalingState === "have-local-offer") {
+          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        } else {
+          console.warn("Skipping answer due to invalid signaling state");
+        }
+      } catch (err) {
+        console.error("Error setting remote answer SDP:", err);
+      }
+    });
+
+    socket.on("ice-candidate", async ({ candidate }) => {
+      try {
+        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+      } catch (e) {
+        console.error("ICE Candidate error:", e);
+      }
+    });
+
+    socket.on("chat-message", ({ sender, message }) => {
+      setChatMessages((prev) => [...prev, { sender, message }]);
+    });
+
+    socket.on("user-left", ({ username }) => {
+      setChatMessages((prev) => [...prev, { sender: "System", message: `${username} left the room.` }]);
+    });
+
+    return () => {
+      socket.off("user-joined");
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("ice-candidate");
+      socket.off("chat-message");
+      socket.off("user-left");
+    };
+  }, [socket, createPeerConnection]);
+
+  const joinRoom = async () => {
+    if (!roomId || !username) return alert("Enter both Room ID and Username");
+    setJoined(true);
+    await createPeerConnection();
+    socket.emit("join-room", { roomId, username, isInitiator: true });
+  };
+
+  const leaveRoom = () => {
+    if (socket) {
+      socket.emit("leave-room", { roomId, username });
+      setJoined(false);
+      setRoomId("");
+      setUsername("");
+      setChatMessages([]);
+      if (peerConnection.current) {
+        peerConnection.current.close();
+        peerConnection.current = null;
+      }
+      if (localStream.current) {
+        localStream.current.getTracks().forEach((track) => track.stop());
+      }
     }
   };
 
-  return (
-    <div style={{ padding: "10px" }}>
-      <h2>Live Session - Room: {roomId}</h2>
-      <div style={{ display: "flex", gap: "10px" }}>
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{ width: "300px", border: "1px solid black" }}
-        />
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          style={{ width: "300px", border: "1px solid black" }}
-        />
-      </div>
+  const sendMessage = () => {
+    if (message.trim() === "") return;
+    socket.emit("chat-message", { roomId, message });
+    setChatMessages((msgs) => [...msgs, { sender: "Me", message }]);
+    setMessage("");
+  };
 
-      <div style={{ marginTop: "20px" }}>
-        <h3>Chat</h3>
-        <div
-          style={{
-            border: "1px solid #ddd",
-            height: "150px",
-            overflowY: "scroll",
-            padding: "5px",
-          }}
-        >
-          {messages.map((msg, i) => (
-            <p key={i}>
-              <b>{msg.sender}:</b> {msg.message}
-            </p>
-          ))}
-        </div>
-        <input
-          type="text"
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          placeholder="Type your message"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSendMessage();
-          }}
-          style={{ width: "100%", padding: "8px", marginTop: "5px" }}
-        />
-      </div>
+  return (
+    <div style={{ maxWidth: 700, margin: "auto", padding: 20 }}>
+      {!joined ? (
+        <>
+          <input
+            placeholder="Enter Room ID"
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
+            style={{ marginRight: 10 }}
+          />
+          <input
+            placeholder="Enter Your Name"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <button onClick={joinRoom} style={{ marginLeft: 10 }}>
+            Join Session
+          </button>
+        </>
+      ) : (
+        <>
+          <h3>Room: {roomId}</h3>
+          <button onClick={leaveRoom} style={{ marginBottom: 10 }}>Leave Session</button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div>
+              <p>You (local):</p>
+              <video ref={localVideoRef} autoPlay playsInline muted style={{ width: 300, border: "1px solid black" }} />
+            </div>
+            <div>
+              <p>Remote:</p>
+              <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 300, border: "1px solid black" }} />
+            </div>
+          </div>
+          <div style={{ marginTop: 20 }}>
+            <h4>Chat</h4>
+            <div style={{
+              border: "1px solid gray",
+              height: 150,
+              overflowY: "scroll",
+              padding: 10,
+              marginBottom: 10,
+            }}>
+              {chatMessages.map((msg, idx) => (
+                <p key={idx}><b>{msg.sender}:</b> {msg.message}</p>
+              ))}
+            </div>
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type message..."
+            />
+            <button onClick={sendMessage}>Send</button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
+
 export default LiveSession;
+
+
+
+
