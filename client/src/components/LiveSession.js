@@ -1,3 +1,4 @@
+// ...imports...
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
@@ -8,7 +9,6 @@ const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
   const [username, setUsername] = useState("");
   const [joined, setJoined] = useState(false);
-
   const [chatMessages, setChatMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [remoteSocketId, setRemoteSocketId] = useState(null);
@@ -23,16 +23,10 @@ const LiveSession = () => {
   };
 
   const createPeerConnection = useCallback(async () => {
-    if (peerConnection.current) {
-      peerConnection.current.close();
-      peerConnection.current = null;
-    }
-
-    peerConnection.current = new RTCPeerConnection(servers);
     console.log("🌐 New RTCPeerConnection created");
+    peerConnection.current = new RTCPeerConnection(servers);
 
     localStream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = localStream.current;
     }
@@ -41,8 +35,18 @@ const LiveSession = () => {
       peerConnection.current.addTrack(track, localStream.current);
     });
 
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate && remoteSocketId) {
+        console.log("❄️ Sending ICE candidate:", event.candidate);
+        socket.emit("ice-candidate", {
+          target: remoteSocketId,
+          candidate: event.candidate,
+        });
+      }
+    };
+
     peerConnection.current.ontrack = (event) => {
-      console.log("🎥 ontrack triggered:", event);
+      console.log("🎥 ontrack received:", event.streams || event.track);
       if (remoteVideoRef.current) {
         if (!remoteVideoRef.current.srcObject) {
           const remoteStream = new MediaStream();
@@ -52,16 +56,6 @@ const LiveSession = () => {
           remoteVideoRef.current.srcObject.addTrack(event.track);
         }
         remoteVideoRef.current.play().catch((e) => console.warn("Autoplay blocked:", e));
-      }
-    };
-
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate && remoteSocketId) {
-        console.log("❄️ Sending ICE candidate:", event.candidate);
-        socket.emit("ice-candidate", {
-          target: remoteSocketId,
-          candidate: event.candidate,
-        });
       }
     };
 
@@ -89,7 +83,7 @@ const LiveSession = () => {
       if (isInitiator) {
         const offer = await peerConnection.current.createOffer();
         await peerConnection.current.setLocalDescription(offer);
-        console.log("📨 Sending offer to:", userId);
+        console.log("📨 Sending offer sdp:", offer);
         socket.emit("offer", {
           target: userId,
           caller: socket.id,
@@ -99,14 +93,16 @@ const LiveSession = () => {
     });
 
     socket.on("offer", async ({ sdp, caller }) => {
-      console.log("📨 Offer received from:", caller);
+      console.log("📨 Received offer SDP:", sdp);
       setRemoteSocketId(caller);
       if (!peerConnection.current) await createPeerConnection();
-
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      console.log("📥 Set remote description (offer)");
+
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
-      console.log("📨 Sending answer to:", caller);
+      console.log("📨 Sending answer sdp:", answer);
+
       socket.emit("answer", {
         target: caller,
         responder: socket.id,
@@ -115,18 +111,16 @@ const LiveSession = () => {
     });
 
     socket.on("answer", async ({ sdp }) => {
-      console.log("📩 Answer received from responder");
-      if (peerConnection.current.signalingState === "have-local-offer") {
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
-      }
+      console.log("📨 Received answer SDP:", sdp);
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
-      console.log("❄️ ICE candidate received:", candidate);
+      console.log("❄️ Received ICE candidate:", candidate);
       try {
         await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
       } catch (e) {
-        console.error("🚨 Error adding ICE candidate", e);
+        console.error("Error adding ICE candidate", e);
       }
     });
 
@@ -150,8 +144,8 @@ const LiveSession = () => {
 
   const joinRoom = async () => {
     if (!roomId || !username) return alert("Enter both Room ID and Username");
-    setJoined(true);
     console.log("🚪 Joining room:", roomId);
+    setJoined(true);
     await createPeerConnection();
     socket.emit("join-room", { roomId, username, isInitiator: true });
   };
@@ -159,7 +153,6 @@ const LiveSession = () => {
   const leaveRoom = () => {
     if (socket) {
       socket.emit("leave-room", { roomId, username });
-      console.log("🚪 Leaving room:", roomId);
       setJoined(false);
       setRoomId("");
       setUsername("");
