@@ -1,237 +1,143 @@
-// ...imports...
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { io } from "socket.io-client";
+import React, { useEffect, useRef, useState } from "react";
+import io from "socket.io-client";
 
-const SOCKET_SERVER_URL = "https://skillswap-backend-jxyu.onrender.com";
+const SERVER_URL = "https://skillswap-backend-jxyu.onrender.com"; 
 
-const LiveSession = () => {
+const LiveSession = ({ username, roomId }) => {
   const [socket, setSocket] = useState(null);
-  const [roomId, setRoomId] = useState("");
-  const [username, setUsername] = useState("");
-  const [joined, setJoined] = useState(false);
+  const [remoteUser, setRemoteUser] = useState(null);
+  const localRef = useRef();
+  const remoteRef = useRef();
+  const pcRef = useRef(new RTCPeerConnection());
   const [chatMessages, setChatMessages] = useState([]);
   const [message, setMessage] = useState("");
-  const [remoteSocketId, setRemoteSocketId] = useState(null);
-
-  const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
-  const peerConnection = useRef(null);
-  const localStream = useRef(null);
-
-  const servers = {
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-  };
-
-  const createPeerConnection = useCallback(async () => {
-    console.log("🌐 New RTCPeerConnection created");
-    peerConnection.current = new RTCPeerConnection(servers);
-
-    localStream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream.current;
-    }
-
-    localStream.current.getTracks().forEach((track) => {
-      peerConnection.current.addTrack(track, localStream.current);
-    });
-
-    peerConnection.current.onicecandidate = (event) => {
-      if (event.candidate && remoteSocketId) {
-        console.log("❄️ Sending ICE candidate:", event.candidate);
-        socket.emit("ice-candidate", {
-          target: remoteSocketId,
-          candidate: event.candidate,
-        });
-      }
-    };
-
-    peerConnection.current.ontrack = (event) => {
-      console.log("🎥 ontrack received:", event.streams || event.track);
-      if (remoteVideoRef.current) {
-        if (!remoteVideoRef.current.srcObject) {
-          const remoteStream = new MediaStream();
-          remoteStream.addTrack(event.track);
-          remoteVideoRef.current.srcObject = remoteStream;
-        } else {
-          remoteVideoRef.current.srcObject.addTrack(event.track);
-        }
-        remoteVideoRef.current.play().catch((e) => console.warn("Autoplay blocked:", e));
-      }
-    };
-
-    peerConnection.current.onconnectionstatechange = () => {
-      console.log("✅ PC connection state:", peerConnection.current.connectionState);
-    };
-  }, [remoteSocketId, socket]);
 
   useEffect(() => {
-    const newSocket = io(SOCKET_SERVER_URL);
-    setSocket(newSocket);
-    return () => newSocket.disconnect();
-  }, []);
+    const sock = io(SERVER_URL);
+    setSocket(sock);
 
-  useEffect(() => {
-    if (!socket) return;
+    sock.emit("join-room", { roomId, username });
 
-    socket.on("user-joined", async ({ userId, username: newUser, isInitiator }) => {
-      console.log("👥 User joined:", userId);
-      setRemoteSocketId(userId);
-      setChatMessages((prev) => [...prev, { sender: "System", message: `${newUser} joined the room.` }]);
-
-      if (!peerConnection.current) await createPeerConnection();
+    sock.on("user-joined", async ({ userId, username: peerName, isInitiator }) => {
+      setRemoteUser({ id: userId, name: peerName });
 
       if (isInitiator) {
-        const offer = await peerConnection.current.createOffer();
-        await peerConnection.current.setLocalDescription(offer);
-        console.log("📨 Sending offer sdp:", offer);
-        socket.emit("offer", {
-          target: userId,
-          caller: socket.id,
-          sdp: offer,
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localRef.current.srcObject = stream;
+
+        stream.getTracks().forEach((track) => pcRef.current.addTrack(track, stream));
+
+        const offer = await pcRef.current.createOffer();
+        await pcRef.current.setLocalDescription(offer);
+
+        sock.emit("offer", { sdp: offer, caller: sock.id, target: userId });
+      }
+    });
+
+    sock.on("offer", async ({ sdp, caller }) => {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localRef.current.srcObject = stream;
+      stream.getTracks().forEach((track) => pcRef.current.addTrack(track, stream));
+
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+
+      sock.emit("answer", { sdp: answer, responder: sock.id, target: caller });
+    });
+
+    sock.on("answer", async ({ sdp }) => {
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+    });
+
+    sock.on("ice-candidate", async ({ candidate }) => {
+      if (candidate) {
+        try {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.error("Error adding ICE candidate:", err);
+        }
+      }
+    });
+
+    pcRef.current.onicecandidate = (e) => {
+      if (e.candidate && remoteUser) {
+        sock.emit("ice-candidate", {
+          candidate: e.candidate,
+          target: remoteUser.id,
         });
       }
-    });
+    };
 
-    socket.on("offer", async ({ sdp, caller }) => {
-      console.log("📨 Received offer SDP:", sdp);
-      setRemoteSocketId(caller);
-      if (!peerConnection.current) await createPeerConnection();
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
-      console.log("📥 Set remote description (offer)");
+    pcRef.current.ontrack = (event) => {
+      remoteRef.current.srcObject = event.streams[0];
+    };
 
-      const answer = await peerConnection.current.createAnswer();
-      await peerConnection.current.setLocalDescription(answer);
-      console.log("📨 Sending answer sdp:", answer);
-
-      socket.emit("answer", {
-        target: caller,
-        responder: socket.id,
-        sdp: answer,
-      });
-    });
-
-    socket.on("answer", async ({ sdp }) => {
-      console.log("📨 Received answer SDP:", sdp);
-      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
-    });
-
-    socket.on("ice-candidate", async ({ candidate }) => {
-      console.log("❄️ Received ICE candidate:", candidate);
-      try {
-        await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (e) {
-        console.error("Error adding ICE candidate", e);
-      }
-    });
-
-    socket.on("chat-message", ({ sender, message }) => {
+    sock.on("chat-message", ({ sender, message }) => {
       setChatMessages((prev) => [...prev, { sender, message }]);
     });
 
-    socket.on("user-left", ({ username }) => {
-      setChatMessages((prev) => [...prev, { sender: "System", message: `${username} left the room.` }]);
+    sock.on("user-left", ({ userId, username }) => {
+      setRemoteUser(null);
+      if (remoteRef.current.srcObject) {
+        remoteRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      }
+      remoteRef.current.srcObject = null;
     });
 
     return () => {
-      socket.off("user-joined");
-      socket.off("offer");
-      socket.off("answer");
-      socket.off("ice-candidate");
-      socket.off("chat-message");
-      socket.off("user-left");
+      sock.emit("leave-room", { roomId, username });
+      pcRef.current.close();
+      sock.disconnect();
     };
-  }, [socket, createPeerConnection]);
+  }, []);
 
-  const joinRoom = async () => {
-    if (!roomId || !username) return alert("Enter both Room ID and Username");
-    console.log("🚪 Joining room:", roomId);
-    setJoined(true);
-    await createPeerConnection();
-    socket.emit("join-room", { roomId, username, isInitiator: true });
-  };
-
-  const leaveRoom = () => {
-    if (socket) {
-      socket.emit("leave-room", { roomId, username });
-      setJoined(false);
-      setRoomId("");
-      setUsername("");
-      setChatMessages([]);
-      setRemoteSocketId(null);
-      if (peerConnection.current) {
-        peerConnection.current.close();
-        peerConnection.current = null;
-      }
-      if (localStream.current) {
-        localStream.current.getTracks().forEach((track) => track.stop());
-      }
+  const sendMessage = () => {
+    if (message.trim() && socket) {
+      socket.emit("chat-message", { roomId, message });
+      setChatMessages((prev) => [...prev, { sender: "You", message }]);
+      setMessage("");
     }
   };
 
-  const sendMessage = () => {
-    if (message.trim() === "") return;
-    console.log("💬 Sending message:", message);
-    socket.emit("chat-message", { roomId, message });
-    setChatMessages((msgs) => [...msgs, { sender: "Me", message }]);
-    setMessage("");
-  };
-
   return (
-    <div style={{ maxWidth: 700, margin: "auto", padding: 20 }}>
-      {!joined ? (
-        <>
+    <div className="p-4 text-white bg-gray-900 min-h-screen">
+      <h2 className="text-2xl font-bold mb-4">🔴 Live Session in Room: {roomId}</h2>
+
+      <div className="flex flex-wrap gap-4 mb-4">
+        <div>
+          <p className="mb-2">🎥 Your Video</p>
+          <video ref={localRef} autoPlay muted playsInline width="300" />
+        </div>
+        <div>
+          <p className="mb-2">🧍‍♂️ Remote Video</p>
+          <video ref={remoteRef} autoPlay playsInline width="300" />
+        </div>
+      </div>
+
+      <div className="bg-gray-800 p-4 rounded shadow-lg max-w-md">
+        <h3 className="font-semibold mb-2">💬 Chat</h3>
+        <div className="h-40 overflow-y-auto border p-2 mb-2">
+          {chatMessages.map((msg, i) => (
+            <div key={i}>
+              <strong>{msg.sender}: </strong>
+              <span>{msg.message}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex">
           <input
-            placeholder="Enter Room ID"
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)}
-            style={{ marginRight: 10 }}
+            className="flex-1 rounded p-1 text-black"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Type a message..."
           />
-          <input
-            placeholder="Enter Your Name"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <button onClick={joinRoom} style={{ marginLeft: 10 }}>
-            Join Session
+          <button onClick={sendMessage} className="ml-2 bg-teal-500 px-3 rounded">
+            Send
           </button>
-        </>
-      ) : (
-        <>
-          <h3>Room: {roomId}</h3>
-          <button onClick={leaveRoom} style={{ marginBottom: 10 }}>Leave Session</button>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div>
-              <p>You (local):</p>
-              <video ref={localVideoRef} autoPlay playsInline muted style={{ width: 300, border: "1px solid black" }} />
-            </div>
-            <div>
-              <p>Remote:</p>
-              <video ref={remoteVideoRef} autoPlay playsInline style={{ width: 300, border: "1px solid black" }} />
-            </div>
-          </div>
-          <div style={{ marginTop: 20 }}>
-            <h4>Chat</h4>
-            <div style={{
-              border: "1px solid gray",
-              height: 150,
-              overflowY: "scroll",
-              padding: 10,
-              marginBottom: 10,
-            }}>
-              {chatMessages.map((msg, idx) => (
-                <p key={idx}><b>{msg.sender}:</b> {msg.message}</p>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type message..."
-            />
-            <button onClick={sendMessage}>Send</button>
-          </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };
