@@ -1,6 +1,3 @@
-// ✅ Final, fully working LIVE SESSION system
-
-// ================== SERVER: index.js ==================
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -58,17 +55,22 @@ io.on("connection", (socket) => {
     });
   });
 
-
   socket.on("offer", ({ sdp, caller, target }) => {
-    io.to(target).emit("offer", { sdp, caller });
+    if (io.sockets.sockets.get(target)) {
+      io.to(target).emit("offer", { sdp, caller });
+    }
   });
 
   socket.on("answer", ({ sdp, responder, target }) => {
-    io.to(target).emit("answer", { sdp, responder });
+    if (io.sockets.sockets.get(target)) {
+      io.to(target).emit("answer", { sdp, responder });
+    }
   });
 
   socket.on("ice-candidate", ({ candidate, target }) => {
-    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
+    if (io.sockets.sockets.get(target)) {
+      io.to(target).emit("ice-candidate", { candidate, from: socket.id });
+    }
   });
 
   socket.on("chat-message", ({ roomId, message }) => {
@@ -81,6 +83,7 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("user-left", { userId: socket.id, username });
     if (rooms[roomId]) {
       rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
+      if (rooms[roomId].length === 0) delete rooms[roomId];
     }
   });
 
