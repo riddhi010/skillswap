@@ -57,8 +57,7 @@ io.on("connection", (socket) => {
       isInitiator: initiator
     });
   });
-    rooms[roomId].push(socket.id);
-  });
+
 
   socket.on("offer", ({ sdp, caller, target }) => {
     io.to(target).emit("offer", { sdp, caller });
