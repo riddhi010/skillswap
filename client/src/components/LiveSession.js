@@ -130,6 +130,31 @@ const LiveSession = () => {
       console.error("Error adding ICE candidate:", error);
     }
   };
+  const leaveCall = () => {
+  // Stop local media tracks
+  if (localStream.current) {
+    localStream.current.getTracks().forEach(track => track.stop());
+  }
+
+  // Close peer connection
+  if (peerRef.current) {
+    peerRef.current.close();
+    peerRef.current = null;
+  }
+
+  // Reset video elements
+  if (localRef.current) localRef.current.srcObject = null;
+  if (remoteRef.current) remoteRef.current.srcObject = null;
+
+  // Leave socket room and disconnect
+  socket.emit("leave-room", roomId);
+  
+
+  // Reset UI state
+  setRoomId("");
+  setInputRoomId("");
+  setInCall(false);
+};
 
   return (
     <div>
