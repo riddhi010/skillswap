@@ -13,7 +13,6 @@ app.use(cors({
   origin: "https://skillswap-client-jm4y.onrender.com",
   credentials: true,
 }));
-
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -31,8 +30,7 @@ const io = new Server(server, {
   },
 });
 
-const rooms = {}; // { roomId: [socketId1, socketId2] }
-
+const rooms = {};
 
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
@@ -47,34 +45,31 @@ io.on("connection", (socket) => {
     }
 
     rooms[roomId].push(socket.id);
-
-    // Notify others in the room (except the new user)
     socket.to(roomId).emit("user-joined");
+  });
 
-    // Clean up on disconnect
-    socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
+  socket.on("leave-room", (roomId) => {
+    console.log(`${socket.id} is leaving room ${roomId}`);
+    socket.leave(roomId);
+    if (rooms[roomId]) {
       rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
       if (rooms[roomId].length === 0) {
         delete rooms[roomId];
       }
-    });
-  });
-  socket.on("leave-room", (roomId) => {
-    const roomId = socket.roomId;
-  if (roomId && rooms[roomId]) {
-    rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-    if (rooms[roomId].length === 0) {
-      delete rooms[roomId];
     }
-  }
-  console.log(`${socket.id} is leaving room ${roomId}`);
-  socket.leave(roomId);
-  rooms[roomId] = rooms[roomId]?.filter(id => id !== socket.id);
-  if (rooms[roomId]?.length === 0) {
-    delete rooms[roomId];
-  }
-});
+  });
+
+  socket.on("disconnect", () => {
+    const roomId = socket.roomId;
+    console.log("Client disconnected:", socket.id);
+    if (roomId && rooms[roomId]) {
+      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
+      if (rooms[roomId].length === 0) {
+        delete rooms[roomId];
+      }
+    }
+  });
+
   socket.on("offer", ({ offer, roomId }) => {
     socket.to(roomId).emit("offer", { offer });
   });
@@ -87,5 +82,6 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("ice-candidate", { candidate });
   });
 });
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
