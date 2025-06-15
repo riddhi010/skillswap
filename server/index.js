@@ -59,7 +59,14 @@ io.on("connection", (socket) => {
       }
     });
   });
-
+  socket.on("leave-room", (roomId) => {
+  console.log(`${socket.id} is leaving room ${roomId}`);
+  socket.leave(roomId);
+  rooms[roomId] = rooms[roomId]?.filter(id => id !== socket.id);
+  if (rooms[roomId]?.length === 0) {
+    delete rooms[roomId];
+  }
+});
   socket.on("offer", ({ offer, roomId }) => {
     socket.to(roomId).emit("offer", { offer });
   });
