@@ -9,7 +9,9 @@ const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
   const [inputRoomId, setInputRoomId] = useState("");
   const [inCall, setInCall] = useState(false);
-
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isCamOn, setIsCamOn] = useState(true);
+  
   const localRef = useRef(null);
   const remoteRef = useRef(null);
   const localStream = useRef(null);
@@ -156,6 +158,24 @@ const LiveSession = () => {
   setInCall(false);
 };
 
+  const toggleMic = () => {
+  if (localStream.current) {
+    localStream.current.getAudioTracks().forEach(track => {
+      track.enabled = !track.enabled;
+    });
+    setIsMicOn(prev => !prev);
+  }
+};
+
+const toggleCamera = () => {
+  if (localStream.current) {
+    localStream.current.getVideoTracks().forEach(track => {
+      track.enabled = !track.enabled;
+    });
+    setIsCamOn(prev => !prev);
+  }
+};
+
   return (
     <div>
       {!inCall ? (
@@ -179,6 +199,12 @@ const LiveSession = () => {
 <br />
 <button onClick={leaveCall} style={{ background: "red", color: "white" }}>
   Leave Meeting
+</button>
+    <button onClick={toggleMic}>
+  {isMicOn ? "Mute" : "Unmute"}
+</button>
+<button onClick={toggleCamera}>
+  {isCamOn ? "Turn Off Camera" : "Turn On Camera"}
 </button>
 
         </div>
