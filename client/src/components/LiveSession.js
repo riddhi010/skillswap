@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:5000"); // Make sure backend is running here
+const socket = io("https://skillswap-backend-jxyu.onrender.com"); // Make sure backend is running here
 
 const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
