@@ -32,74 +32,45 @@ const io = new Server(server, {
 });
 
 const rooms = {}; // { roomId: [socketId1, socketId2] }
-const users = {}; // { socketId: username }
+
 
 io.on("connection", (socket) => {
-  console.log("Connected:", socket.id);
+  console.log("New client connected:", socket.id);
 
-  socket.on("join-room", ({ roomId, username }) => {
-    const existing = rooms[roomId] || [];
-    const initiator = existing.length === 0;
-
+  socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    socket.roomId = roomId;
-    users[socket.id] = username;
+    console.log(`${socket.id} joined room: ${roomId}`);
 
-    rooms[roomId] = existing;
+    if (!rooms[roomId]) {
+      rooms[roomId] = [];
+    }
+
     rooms[roomId].push(socket.id);
 
-    io.to(roomId).emit("user-joined", {
-      userId: socket.id,
-      username,
-      isInitiator: initiator
+    // Notify others in the room (except the new user)
+    socket.to(roomId).emit("user-joined");
+
+    // Clean up on disconnect
+    socket.on("disconnect", () => {
+      console.log("Client disconnected:", socket.id);
+      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
+      if (rooms[roomId].length === 0) {
+        delete rooms[roomId];
+      }
     });
   });
 
-  socket.on("offer", ({ sdp, caller, target }) => {
-    if (io.sockets.sockets.get(target)) {
-      io.to(target).emit("offer", { sdp, caller });
-    }
+  socket.on("offer", ({ offer, roomId }) => {
+    socket.to(roomId).emit("offer", { offer });
   });
 
-  socket.on("answer", ({ sdp, responder, target }) => {
-    if (io.sockets.sockets.get(target)) {
-      io.to(target).emit("answer", { sdp, responder });
-    }
+  socket.on("answer", ({ answer, roomId }) => {
+    socket.to(roomId).emit("answer", { answer });
   });
 
-  socket.on("ice-candidate", ({ candidate, target }) => {
-    if (io.sockets.sockets.get(target)) {
-      io.to(target).emit("ice-candidate", { candidate, from: socket.id });
-    }
-  });
-
-  socket.on("chat-message", ({ roomId, message }) => {
-    const username = users[socket.id] || "Anonymous";
-    io.to(roomId).emit("chat-message", { sender: username, message });
-  });
-
-  socket.on("leave-room", ({ roomId, username }) => {
-    socket.leave(roomId);
-    socket.to(roomId).emit("user-left", { userId: socket.id, username });
-    if (rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
-      if (rooms[roomId].length === 0) delete rooms[roomId];
-    }
-  });
-
-  socket.on("disconnect", () => {
-    const roomId = socket.roomId;
-    const username = users[socket.id] || "User";
-
-    if (roomId && rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
-      socket.to(roomId).emit("user-left", { userId: socket.id, username });
-      if (rooms[roomId].length === 0) delete rooms[roomId];
-    }
-
-    delete users[socket.id];
+  socket.on("ice-candidate", ({ candidate, roomId }) => {
+    socket.to(roomId).emit("ice-candidate", { candidate });
   });
 });
-
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
