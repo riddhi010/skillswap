@@ -39,6 +39,7 @@ io.on("connection", (socket) => {
 
   socket.on("join-room", (roomId) => {
     socket.join(roomId);
+    socket.roomId = roomId;
     console.log(`${socket.id} joined room: ${roomId}`);
 
     if (!rooms[roomId]) {
@@ -60,6 +61,13 @@ io.on("connection", (socket) => {
     });
   });
   socket.on("leave-room", (roomId) => {
+    const roomId = socket.roomId;
+  if (roomId && rooms[roomId]) {
+    rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
+    if (rooms[roomId].length === 0) {
+      delete rooms[roomId];
+    }
+  }
   console.log(`${socket.id} is leaving room ${roomId}`);
   socket.leave(roomId);
   rooms[roomId] = rooms[roomId]?.filter(id => id !== socket.id);
