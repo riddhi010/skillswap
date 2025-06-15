@@ -172,8 +172,15 @@ const LiveSession = () => {
       ) : (
         <div>
           <p>Meeting ID: {roomId}</p>
-          <video ref={localRef} autoPlay muted playsInline style={{ width: "300px" }} />
-          <video ref={remoteRef} autoPlay playsInline style={{ width: "300px" }} />
+<div style={{ display: "flex", gap: "20px" }}>
+  <video ref={localRef} autoPlay muted playsInline style={{ width: "300px" }} />
+  <video ref={remoteRef} autoPlay playsInline style={{ width: "300px" }} />
+</div>
+<br />
+<button onClick={leaveCall} style={{ background: "red", color: "white" }}>
+  Leave Meeting
+</button>
+
         </div>
       )}
     </div>
