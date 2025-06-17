@@ -1,0 +1,36 @@
+/* styles.css */
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E94560;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A1A2E;
+}
+
+/* styles.css */
+.embla {
+  overflow: hidden;
+}
+.embla__container {
+  display: flex;
+}
+.embla__slide {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+
+
