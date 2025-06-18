@@ -31,12 +31,16 @@ const ExploreUsers = () => {
   }, [role, skill, page]);
 
   return (
-    <div>
-      <h2>Explore Users</h2>
+    <div className="max-w-4xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-4 text-center">🔍 Explore Users</h2>
 
       {/* Filters */}
-      <div>
-        <select value={role} onChange={(e) => setRole(e.target.value)}>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+        <select
+          className="px-4 py-2 border rounded-md shadow-sm"
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        >
           <option value="">All Roles</option>
           <option value="learner">Learner</option>
           <option value="mentor">Mentor</option>
@@ -45,7 +49,8 @@ const ExploreUsers = () => {
 
         <input
           type="text"
-          placeholder="Search by skill"
+          placeholder="Search by skill..."
+          className="px-4 py-2 border rounded-md shadow-sm w-full md:w-1/2"
           value={skill}
           onChange={(e) => setSkill(e.target.value)}
         />
@@ -53,32 +58,50 @@ const ExploreUsers = () => {
 
       {/* Users List */}
       {loading ? (
-        <p>Loading...</p>
+        <div className="text-center text-gray-500">Loading...</div>
       ) : error ? (
-        <p style={{ color: "red" }}>{error}</p>
+        <div className="text-center text-red-600">{error}</div>
       ) : users.length === 0 ? (
-        <p>No users found.</p>
+        <div className="text-center text-gray-600">No users found.</div>
       ) : (
-        <ul>
+        <div className="grid md:grid-cols-2 gap-4">
           {users.map((user) => (
-            <li key={user._id}>
-              <strong>{user.name}</strong> - {user.role}
-              <br />
-              Skills: {user.skills.join(", ")}
-            </li>
+            <div
+              key={user._id}
+              className="border rounded-xl p-4 shadow hover:shadow-lg transition"
+            >
+              <h3 className="text-lg font-semibold text-indigo-600">{user.name}</h3>
+              <p className="text-sm text-gray-600 mb-1 capitalize">Role: {user.role}</p>
+              <p className="text-sm">
+                <span className="font-medium">Skills:</span>{" "}
+                {user.skills.join(", ")}
+              </p>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       {/* Pagination Controls */}
-      <div>
-        <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
+      <div className="flex items-center justify-center gap-4 mt-8">
+        <button
+          disabled={page <= 1}
+          onClick={() => setPage(page - 1)}
+          className={`px-4 py-2 rounded-md ${
+            page <= 1 ? "bg-gray-300" : "bg-indigo-500 text-white hover:bg-indigo-600"
+          }`}
+        >
           Previous
         </button>
-        <span>
+        <span className="text-gray-700 font-medium">
           Page {page} of {totalPages}
         </span>
-        <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+        <button
+          disabled={page >= totalPages}
+          onClick={() => setPage(page + 1)}
+          className={`px-4 py-2 rounded-md ${
+            page >= totalPages ? "bg-gray-300" : "bg-indigo-500 text-white hover:bg-indigo-600"
+          }`}
+        >
           Next
         </button>
       </div>
