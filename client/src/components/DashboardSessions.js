@@ -5,7 +5,7 @@ const DashboardSessions = ({ userId }) => {
   const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
-    axios.get(`https://localhost:5000/api/sessions/user/${userId}`)
+    axios.get(`https://skillswap-backend-jxyu.onrender.com/api/sessions/user/${userId}`)
       .then(res => setSessions(res.data));
   }, [userId]);
 
