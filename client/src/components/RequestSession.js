@@ -6,7 +6,7 @@ const RequestSession = ({ currentUserId, peerId }) => {
   const [time, setTime] = useState("");
 
   const requestSession = async () => {
-    const res = await axios.post("http://localhost:5000/api/sessions", {
+    const res = await axios.post("https://skillswap-backend-jxyu.onrender.com/api/sessions", {
       skill,
       requesterId: currentUserId,
       responderId: peerId,
