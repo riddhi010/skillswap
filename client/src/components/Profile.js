@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 const getUserIdFromToken = () => {
   try {
@@ -21,16 +21,16 @@ const Profile = () => {
     skills: "",
   });
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setError("");
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, {
+        const res = await axios.get(`http://localhost:5000/api/users/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -68,7 +68,7 @@ const Profile = () => {
         skills: formData.skills.split(",").map((s) => s.trim()),
       };
 
-      const res = await axios.put(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, payload, {
+      const res = await axios.put(`http://localhost:5000/api/users/${userId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -77,6 +77,7 @@ const Profile = () => {
         ...formData,
         skills: res.data.skills.join(", "),
       });
+      setEditing(false);
     } catch (err) {
       setError("Failed to update profile.");
     } finally {
@@ -84,35 +85,105 @@ const Profile = () => {
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p className="text-center mt-10">Loading...</p>;
 
   return (
-    <div style={{ maxWidth: "500px", margin: "2rem auto", padding: "1rem", border: "1px solid #ccc" }}>
-      <h2>My Profile</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p style={{ color: "green" }}>{message}</p>}
+    <div className="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg">
+      <h2 className="text-3xl font-bold mb-6 text-center">My Profile</h2>
 
-      <form onSubmit={handleUpdate}>
-        <label>Name:</label>
-        <input name="name" value={formData.name} onChange={handleChange} required />
+      {error && <p className="text-red-600 mb-3 text-center">{error}</p>}
+      {message && <p className="text-green-600 mb-3 text-center">{message}</p>}
 
-        <label>Email:</label>
-        <input name="email" value={formData.email} disabled />
-
-        <label>Role:</label>
-        <select name="role" value={formData.role} onChange={handleChange}>
-          <option value="learner">Learner</option>
-          <option value="mentor">Mentor</option>
-          <option value="both">Both</option>
-        </select>
-
-        <label>Skills (comma separated):</label>
-        <input name="skills" value={formData.skills} onChange={handleChange} />
-
-        <button type="submit" disabled={saving}>
-          {saving ? "Saving..." : "Update Profile"}
-        </button>
-      </form>
+      {!editing ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-gray-500">Name</p>
+              <p className="text-lg font-medium">{formData.name}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Email</p>
+              <p className="text-lg font-medium">{formData.email}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Role</p>
+              <p className="text-lg font-medium capitalize">{formData.role}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Skills</p>
+              <p className="text-lg font-medium">{formData.skills}</p>
+            </div>
+          </div>
+          <div className="text-center mt-6">
+            <button
+              onClick={() => setEditing(true)}
+              className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700"
+            >
+              Edit Profile
+            </button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleUpdate} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium">Name</label>
+            <input
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full mt-1 px-3 py-2 border rounded"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Email</label>
+            <input
+              name="email"
+              value={formData.email}
+              disabled
+              className="w-full mt-1 px-3 py-2 border bg-gray-100 rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Role</label>
+            <select
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="w-full mt-1 px-3 py-2 border rounded"
+            >
+              <option value="learner">Learner</option>
+              <option value="mentor">Mentor</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium">Skills</label>
+            <input
+              name="skills"
+              value={formData.skills}
+              onChange={handleChange}
+              className="w-full mt-1 px-3 py-2 border rounded"
+            />
+          </div>
+          <div className="flex justify-between mt-4">
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 };
