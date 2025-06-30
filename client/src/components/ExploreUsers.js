@@ -9,13 +9,17 @@ const ExploreUsers = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showModal, setShowModal] = useState(false);
+const [selectedUser, setSelectedUser] = useState(null);
+const [sessionData, setSessionData] = useState({ skill: "", message: "", date: "" });
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const fetchUsers = async () => {
       setLoading(true);
       setError("");
       try {
-        const res = await axios.get("https://skillswap-backend-jxyu.onrender.com/api/users", {
+        const res = await axios.get("http://localhost:5000/api/users", {
           params: { role, skill, page, limit: 5 },
         });
         setUsers(res.data.users);
@@ -29,6 +33,34 @@ const ExploreUsers = () => {
 
     fetchUsers();
   }, [role, skill, page]);
+  const handleRequestSession = (user) => {
+  setSelectedUser(user);
+  setSessionData({ skill: "", message: "", date: "" });
+  setShowModal(true);
+};
+const submitRequest = async () => {
+  try {
+    await axios.post("http://localhost:5000/api/sessions", {
+      
+      mentorId: selectedUser._id,
+      skill: sessionData.skill,
+      scheduledAt: sessionData.date,
+      message: sessionData.message,
+    },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+    alert("Session request sent successfully!");
+    setShowModal(false);
+  } catch (error) {
+    alert("Failed to send session request.");
+    console.error(error);
+  }
+};
+
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -66,18 +98,25 @@ const ExploreUsers = () => {
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {users.map((user) => (
-            <div
-              key={user._id}
-              className="border rounded-xl p-4 shadow hover:shadow-lg transition"
-            >
-              <h3 className="text-lg font-semibold text-indigo-600">{user.name}</h3>
-              <p className="text-sm text-gray-600 mb-1 capitalize">Role: {user.role}</p>
-              <p className="text-sm">
-                <span className="font-medium">Skills:</span>{" "}
-                {user.skills.join(", ")}
-              </p>
-            </div>
-          ))}
+  <div
+    key={user._id}
+    className="border rounded-xl p-4 shadow hover:shadow-lg transition"
+  >
+    <h3 className="text-lg font-semibold text-indigo-600">{user.name}</h3>
+    <p className="text-sm text-gray-600 mb-1 capitalize">Role: {user.role}</p>
+    <p className="text-sm">
+      <span className="font-medium">Skills:</span> {user.skills.join(", ")}
+    </p>
+
+    <button
+      onClick={() => handleRequestSession(user)}
+      className="mt-3 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition"
+    >
+      Request Session
+    </button>
+  </div>
+))}
+
         </div>
       )}
 
@@ -105,6 +144,53 @@ const ExploreUsers = () => {
           Next
         </button>
       </div>
+      {showModal && (
+  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+      <h3 className="text-lg font-semibold mb-4">
+        Request Session with {selectedUser.name}
+      </h3>
+
+      <input
+        type="text"
+        placeholder="Skill"
+        className="w-full mb-3 px-3 py-2 border rounded"
+        value={sessionData.skill}
+        onChange={(e) => setSessionData({ ...sessionData, skill: e.target.value })}
+      />
+
+      <input
+        type="datetime-local"
+        className="w-full mb-3 px-3 py-2 border rounded"
+        value={sessionData.date}
+        onChange={(e) => setSessionData({ ...sessionData, date: e.target.value })}
+      />
+
+      <textarea
+        placeholder="Message"
+        className="w-full mb-4 px-3 py-2 border rounded"
+        value={sessionData.message}
+        onChange={(e) => setSessionData({ ...sessionData, message: e.target.value })}
+      />
+
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => setShowModal(false)}
+          className="px-4 py-2 bg-gray-300 rounded"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={submitRequest}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Send Request
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };
