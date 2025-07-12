@@ -47,7 +47,14 @@ io.on("connection", (socket) => {
     }
 
     rooms[roomId].push(socket.id);
-    socket.to(roomId).emit("user-joined");
+    if (rooms[roomId].length > 1) {
+  // Notify all others in room that someone joined
+  socket.to(roomId).emit("user-joined");
+
+  // Notify the joining user that someone is already in the room
+  socket.emit("user-joined");
+}
+
   });
 
   socket.on("leave-room", (roomId) => {
