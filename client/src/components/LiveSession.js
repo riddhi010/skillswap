@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { Link } from "react-router-dom";
+import { FaUserCircle } from "react-icons/fa";
 import {
   Video,
   VideoOff,
