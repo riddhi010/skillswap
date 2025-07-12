@@ -173,6 +173,16 @@ const LiveSession = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-indigo-700 text-white p-6">
+    <nav className="bg-white shadow-md px-6 py-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold text-indigo-600">SkillSwap</h2>
+        <div className="flex items-center space-x-6">
+          <Link to="/explore" className="text-gray-700 hover:text-indigo-600 font-medium">Explore Users</Link>
+          <Link to="/live" className="text-gray-700 hover:text-indigo-600 font-medium">Live Session</Link>
+          <Link to="/profile" className="text-gray-700 hover:text-indigo-600 text-2xl">
+            <FaUserCircle />
+          </Link>
+        </div>
+      </nav>
       {!inCall ? (
         <div className="flex flex-col items-center space-y-6 max-w-md mx-auto mt-24 bg-white/10 p-8 rounded-xl shadow-xl backdrop-blur">
           <h2 className="text-3xl font-bold">Join or Create a Session</h2>
