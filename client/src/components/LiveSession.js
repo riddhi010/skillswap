@@ -63,33 +63,31 @@ const LiveSession = () => {
     };
   }, [roomId]);
 
-  const createPeerConnection = () => {
-    peerRef.current = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-    });
+ const createPeerConnection = () => {
+  peerRef.current = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  });
 
-    peerRef.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("ice-candidate", { candidate: event.candidate, roomId });
-      }
-    };
-
-    peerRef.current.ontrack = (event) => {
-      console.log("Received remote track");
-      if (remoteRef.current) {
-        if (!remoteRef.current.srcObject) {
-          remoteRef.current.srcObject = new MediaStream();
-        }
-        remoteRef.current.srcObject.addTrack(event.track);
-      }
-    };
-
-    if (localStream.current) {
-      localStream.current.getTracks().forEach((track) => {
-        peerRef.current.addTrack(track, localStream.current);
-      });
+  peerRef.current.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("ice-candidate", { candidate: event.candidate, roomId });
     }
   };
+
+  peerRef.current.ontrack = (event) => {
+    console.log("Received remote track");
+    if (remoteRef.current) {
+      remoteRef.current.srcObject = event.streams[0];
+    }
+  };
+
+  if (localStream.current) {
+    localStream.current.getTracks().forEach((track) => {
+      peerRef.current.addTrack(track, localStream.current);
+    });
+  }
+};
+
 
   const callUser = async () => {
     if (!peerRef.current) {
