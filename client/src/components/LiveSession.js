@@ -1,4 +1,3 @@
-// 📁 client/src/LiveSession.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
@@ -18,18 +17,17 @@ const LiveSession = () => {
   const isOfferer = useRef(false);
 
   useEffect(() => {
-    // Listen for signaling events only once on mount
     socket.on("user-joined", () => {
       console.log("User joined, starting call as offerer");
-      isOfferer.current = true;
-      callUser();
+      if (isOfferer.current && !peerRef.current) {
+        callUser();
+      }
     });
 
     socket.on("offer", async ({ offer }) => {
       console.log("Received offer");
-      if (!peerRef.current) {
-        createPeerConnection();
-      }
+      if (!peerRef.current) createPeerConnection();
+
       await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerRef.current.createAnswer();
       await peerRef.current.setLocalDescription(answer);
@@ -38,6 +36,7 @@ const LiveSession = () => {
 
     socket.on("answer", async ({ answer }) => {
       console.log("Received answer");
+      if (peerRef.current.signalingState === "stable") return;
       await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
     });
 
@@ -69,14 +68,12 @@ const LiveSession = () => {
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
 
-    // Send any ICE candidates to the other peer
     peerRef.current.onicecandidate = (event) => {
       if (event.candidate) {
         socket.emit("ice-candidate", { candidate: event.candidate, roomId });
       }
     };
 
-    // When remote track arrives, show it in remote video element
     peerRef.current.ontrack = (event) => {
       console.log("Received remote track");
       if (remoteRef.current) {
@@ -87,7 +84,6 @@ const LiveSession = () => {
       }
     };
 
-    // Add all local tracks to the connection
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
         peerRef.current.addTrack(track, localStream.current);
@@ -99,7 +95,6 @@ const LiveSession = () => {
     if (!peerRef.current) {
       createPeerConnection();
     }
-    isOfferer.current = true;
     const offer = await peerRef.current.createOffer();
     await peerRef.current.setLocalDescription(offer);
     socket.emit("offer", { offer, roomId });
@@ -114,7 +109,12 @@ const LiveSession = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localRef.current.srcObject = stream;
       localStream.current = stream;
-      socket.emit("join-room", id);
+
+      // Check if room already exists to set offerer flag
+      socket.emit("check-room", id, (roomExists) => {
+        isOfferer.current = !roomExists;
+        socket.emit("join-room", id);
+      });
     } catch (err) {
       console.error("Error accessing media devices:", err);
       alert("Could not access camera/mic. Please allow permissions.");
@@ -133,18 +133,15 @@ const LiveSession = () => {
   };
 
   const endCall = () => {
-    // Stop all local media tracks
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => track.stop());
     }
 
-    // Close peer connection
     if (peerRef.current) {
       peerRef.current.close();
       peerRef.current = null;
     }
 
-    // Reset video srcObjects
     if (localRef.current) localRef.current.srcObject = null;
     if (remoteRef.current) remoteRef.current.srcObject = null;
 
