@@ -57,6 +57,11 @@ io.on("connection", (socket) => {
 
   });
 
+  socket.on("check-room", (roomId, callback) => {
+  const room = io.sockets.adapter.rooms.get(roomId);
+  callback(!!room && room.size > 0);
+});
+
   socket.on("leave-room", (roomId) => {
     console.log(`${socket.id} is leaving room ${roomId}`);
     socket.leave(roomId);
