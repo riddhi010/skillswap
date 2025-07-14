@@ -1,3 +1,6 @@
+// ✅ Final, fully working LIVE SESSION system
+
+// ================== SERVER: index.js ==================
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -10,9 +13,10 @@ connectDB();
 
 const app = express();
 app.use(cors({
-  origin: "https://skillswap-client-jm4y.onrender.com",
+  origin: "http://localhost:3000",
   credentials: true,
 }));
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -24,6 +28,7 @@ app.use("/api/users", require("./routes/users"));
 const sessionRoutes = require("./routes/sessionRoutes");
 app.use("/api/sessions", sessionRoutes);
 
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -32,29 +37,32 @@ const io = new Server(server, {
   },
 });
 
-const rooms = {};
+const rooms = {}; // { roomId: [socketId1, socketId2] }
+const users = {}; // { socketId: username }
 
 io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
+  console.log("Connected:", socket.id);
 
-  socket.on("join-room", (roomId) => {
+  socket.on("join-room", ({ roomId, username }) => {
     socket.join(roomId);
     socket.roomId = roomId;
-    console.log(`${socket.id} joined room: ${roomId}`);
+    users[socket.id] = username;
 
-    if (!rooms[roomId]) {
-      rooms[roomId] = [];
-    }
+    if (!rooms[roomId]) rooms[roomId] = [];
+
+    // Notify existing users
+    rooms[roomId].forEach((id) => {
+      io.to(id).emit("user-joined", {
+        userId: socket.id,
+        username,
+      });
+      socket.emit("user-joined", {
+        userId: id,
+        username: users[id],
+      });
+    });
 
     rooms[roomId].push(socket.id);
-    if (rooms[roomId].length > 1) {
-  // Notify all others in room that someone joined
-  socket.to(roomId).emit("user-joined");
-
-  // Notify the joining user that someone is already in the room
-  socket.emit("user-joined");
-}
-
   });
 
   socket.on("check-room", (roomId, callback) => {
@@ -62,38 +70,43 @@ io.on("connection", (socket) => {
   callback(!!room && room.size > 0);
 });
 
-  socket.on("leave-room", (roomId) => {
-    console.log(`${socket.id} is leaving room ${roomId}`);
+
+  socket.on("offer", ({ sdp, caller, target }) => {
+    io.to(target).emit("offer", { sdp, caller });
+  });
+
+  socket.on("answer", ({ sdp, responder, target }) => {
+    io.to(target).emit("answer", { sdp, responder });
+  });
+
+  socket.on("ice-candidate", ({ candidate, target }) => {
+    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
+  });
+
+  socket.on("chat-message", ({ roomId, message }) => {
+    const username = users[socket.id] || "Anonymous";
+    io.to(roomId).emit("chat-message", { sender: username, message });
+  });
+
+  socket.on("leave-room", ({ roomId, username }) => {
     socket.leave(roomId);
+    socket.to(roomId).emit("user-left", { userId: socket.id, username });
     if (rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-      if (rooms[roomId].length === 0) {
-        delete rooms[roomId];
-      }
+      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
     }
   });
 
   socket.on("disconnect", () => {
     const roomId = socket.roomId;
-    console.log("Client disconnected:", socket.id);
+    const username = users[socket.id] || "User";
+
     if (roomId && rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-      if (rooms[roomId].length === 0) {
-        delete rooms[roomId];
-      }
+      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
+      socket.to(roomId).emit("user-left", { userId: socket.id, username });
+      if (rooms[roomId].length === 0) delete rooms[roomId];
     }
-  });
 
-  socket.on("offer", ({ offer, roomId }) => {
-    socket.to(roomId).emit("offer", { offer });
-  });
-
-  socket.on("answer", ({ answer, roomId }) => {
-    socket.to(roomId).emit("answer", { answer });
-  });
-
-  socket.on("ice-candidate", ({ candidate, roomId }) => {
-    socket.to(roomId).emit("ice-candidate", { candidate });
+    delete users[socket.id];
   });
 });
 
