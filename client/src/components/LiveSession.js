@@ -27,9 +27,9 @@ const LiveSession = () => {
       }
     });
 
-    socket.on("offer", async ({ offer }) => {
-  console.log("Received offer", offer);
-  
+   socket.on("offer", async ({ offer }) => {
+  console.log("📥 Received offer", offer);
+
   if (!offer || !offer.type || !offer.sdp) {
     console.error("❌ Invalid offer received:", offer);
     return;
@@ -39,15 +39,18 @@ const LiveSession = () => {
 
   try {
     await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-
     const answer = await peerRef.current.createAnswer();
     await peerRef.current.setLocalDescription(answer);
 
-    socket.emit("answer", { answer: peerRef.current.localDescription, roomId });
+    socket.emit("answer", {
+      answer: peerRef.current.localDescription,  // ✅ send fully formed answer
+      roomId,
+    });
   } catch (err) {
-    console.error("❌ Error setting remote description or sending answer:", err);
+    console.error("❌ Error handling received offer:", err);
   }
 });
+
 
 
     socket.on("answer", async ({ answer }) => {
@@ -133,7 +136,7 @@ const LiveSession = () => {
     }
   };
 
- const callUser = async () => {
+const callUser = async () => {
   if (!peerRef.current) {
     createPeerConnection();
   }
@@ -142,19 +145,20 @@ const LiveSession = () => {
     const offer = await peerRef.current.createOffer();
     await peerRef.current.setLocalDescription(offer);
 
-    // Wait for local description to be fully set
     if (peerRef.current.localDescription) {
+      console.log("📤 Sending offer:", peerRef.current.localDescription);
       socket.emit("offer", {
-        offer: peerRef.current.localDescription, // ✅ safer
+        offer: peerRef.current.localDescription,  // ✅ send fully formed offer
         roomId,
       });
     } else {
-      console.warn("Local description is not set yet.");
+      console.error("⚠️ localDescription is null, not emitting offer.");
     }
   } catch (err) {
-    console.error("Error creating or sending offer:", err);
+    console.error("❌ Error in callUser:", err);
   }
 };
+
 
 
   const joinRoom = async (id) => {
