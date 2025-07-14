@@ -33,6 +33,15 @@ const LiveSession = () => {
       setRemoteUserId(caller);
       createPeerConnection();
       await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      console.log("✅ Remote description set from offer");
+
+      // Drain queued ICE candidates
+      while (iceQueue.current.length) {
+        const candidate = iceQueue.current.shift();
+        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("✅ ICE candidate added from queue");
+      }
+
       const answer = await peerRef.current.createAnswer();
       await peerRef.current.setLocalDescription(answer);
       socket.emit("answer", {
@@ -46,14 +55,25 @@ const LiveSession = () => {
       console.log("📥 Received answer");
       if (peerRef.current.signalingState !== "stable") {
         await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        console.log("✅ Remote description set from answer");
+
+        // Drain queued ICE candidates
+        while (iceQueue.current.length) {
+          const candidate = iceQueue.current.shift();
+          await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log("✅ ICE candidate added from queue");
+        }
       }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
+      console.log("📥 ICE candidate received");
       if (peerRef.current && peerRef.current.remoteDescription) {
         await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("✅ ICE candidate added immediately");
       } else {
         iceQueue.current.push(candidate);
+        console.log("⏳ ICE candidate queued");
       }
     });
 
@@ -92,37 +112,29 @@ const LiveSession = () => {
       }
     };
 
- peerRef.current.ontrack = (event) => {
-  console.log("🔵 Received remote track");
+    peerRef.current.ontrack = (event) => {
+      console.log("🔵 Received remote track:", event.track.kind);
 
-  // Avoid reassigning if already set
-  if (!remoteRef.current.srcObject) {
-    const inboundStream = new MediaStream();
-    inboundStream.addTrack(event.track);
-    remoteRef.current.srcObject = inboundStream;
+      if (!remoteRef.current.srcObject) {
+        remoteRef.current.srcObject = new MediaStream();
+      }
 
-    // Play after metadata loads to avoid DOMException
-    remoteRef.current.onloadedmetadata = () => {
-      remoteRef.current
-        .play()
-        .then(() => console.log("▶️ Remote video playing"))
-        .catch((err) =>
+      const stream = remoteRef.current.srcObject;
+      const trackAlreadyAdded = stream.getTracks().some(
+        (t) => t.id === event.track.id
+      );
+
+      if (!trackAlreadyAdded) {
+        stream.addTrack(event.track);
+        console.log("✅ Track added to remote stream");
+      }
+
+      remoteRef.current.onloadedmetadata = () => {
+        remoteRef.current.play().catch(err =>
           console.error("❌ Error playing remote video:", err)
         );
+      };
     };
-  } else {
-    // Add track only if not already added
-    const currentTracks = remoteRef.current.srcObject.getTracks();
-    if (!currentTracks.find((t) => t.id === event.track.id)) {
-      remoteRef.current.srcObject.addTrack(event.track);
-    }
-  }
-};
-
-
-
-
-
 
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
@@ -143,9 +155,8 @@ const LiveSession = () => {
 
   const joinRoom = async (id) => {
     if (!id) return alert("Please enter a meeting ID");
-    setRoomId(id);
-    setInCall(true);
 
+    // Setup local stream BEFORE checking room
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localRef.current.srcObject = stream;
     localStream.current = stream;
@@ -154,6 +165,9 @@ const LiveSession = () => {
       isOfferer.current = !roomExists;
       socket.emit("join-room", { roomId: id, username: "User" });
     });
+
+    setRoomId(id);
+    setInCall(true);
   };
 
   const leaveCall = () => {
@@ -195,30 +209,31 @@ const LiveSession = () => {
       ) : (
         <div>
           <p>Meeting ID: {roomId}</p>
-          <video
-  ref={localRef}
-  autoPlay
-  muted
-  playsInline
-  style={{
-    width: "300px",
-    border: "2px solid green",
-    borderRadius: "8px",
-    background: "black" 
-  }}
-/>
 
-<video
-  ref={remoteRef}
-  autoPlay
-  playsInline
-  style={{
-    width: "300px",
-    border: "2px solid blue",
-    borderRadius: "8px",
-    background: "black" 
-  }}
-/>
+          <video
+            ref={localRef}
+            autoPlay
+            muted
+            playsInline
+            style={{
+              width: "300px",
+              border: "2px solid green",
+              borderRadius: "8px",
+              background: "black"
+            }}
+          />
+
+          <video
+            ref={remoteRef}
+            autoPlay
+            playsInline
+            style={{
+              width: "300px",
+              border: "2px solid blue",
+              borderRadius: "8px",
+              background: "black"
+            }}
+          />
 
           <br />
           <button onClick={leaveCall}>Leave</button>
