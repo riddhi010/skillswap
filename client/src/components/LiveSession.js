@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const socket = io("https://skillswap-backend-jxyu.onrender.com", {
-  transports: ["websocket"]
+  transports: ["websocket"],
 });
 
 const LiveSession = () => {
@@ -18,13 +18,6 @@ const LiveSession = () => {
   const peerRef = useRef(null);
   const isOfferer = useRef(false);
   const iceQueue = useRef([]);
-
-  // Assign remote stream to video element ONCE after component mounts
-  useEffect(() => {
-    if (remoteRef.current) {
-      remoteRef.current.srcObject = remoteMediaStream.current;
-    }
-  }, []);
 
   useEffect(() => {
     socket.on("user-joined", ({ userId }) => {
@@ -104,9 +97,9 @@ const LiveSession = () => {
         {
           urls: "turn:openrelay.metered.ca:80",
           username: "openrelayproject",
-          credential: "openrelayproject"
-        }
-      ]
+          credential: "openrelayproject",
+        },
+      ],
     });
 
     peerRef.current.onicecandidate = (event) => {
@@ -120,6 +113,7 @@ const LiveSession = () => {
 
     peerRef.current.ontrack = (event) => {
       console.log("🔵 Remote track received:", event.track.kind);
+
       const stream = remoteMediaStream.current;
       const alreadyExists = stream.getTracks().some(
         (t) => t.id === event.track.id
@@ -129,6 +123,21 @@ const LiveSession = () => {
         stream.addTrack(event.track);
         console.log("✅ Track added to remote stream");
       }
+
+      const assignStreamToVideo = () => {
+        const video = remoteRef.current;
+        if (!video) {
+          console.warn("⏳ remoteRef not ready, retrying...");
+          setTimeout(assignStreamToVideo, 50);
+          return;
+        }
+        if (!video.srcObject) {
+          video.srcObject = remoteMediaStream.current;
+          console.log("✅ Remote stream assigned to video element");
+        }
+      };
+
+      assignStreamToVideo();
     };
 
     if (localStream.current) {
@@ -149,19 +158,35 @@ const LiveSession = () => {
   };
 
   const joinRoom = async (id) => {
-    if (!id) return alert("Please enter a meeting ID");
+    if (!id) {
+      alert("Please enter a meeting ID");
+      return;
+    }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localRef.current.srcObject = stream;
-    localStream.current = stream;
+    try {
+      console.log("🎥 Requesting media access...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
 
-    socket.emit("check-room", id, (roomExists) => {
-      isOfferer.current = !roomExists;
-      socket.emit("join-room", { roomId: id, username: "User" });
-    });
+      localRef.current.srcObject = stream;
+      localStream.current = stream;
 
-    setRoomId(id);
-    setInCall(true);
+      console.log("✅ Local media stream ready");
+
+      setRoomId(id);
+      setInCall(true);
+
+      socket.emit("check-room", id, (roomExists) => {
+        isOfferer.current = !roomExists;
+        console.log(`📡 Room ${id} exists?`, roomExists);
+        socket.emit("join-room", { roomId: id, username: "User" });
+      });
+    } catch (err) {
+      console.error("❌ Error accessing media:", err);
+      alert("Camera/Mic access denied or not available.");
+    }
   };
 
   const leaveCall = () => {
@@ -177,15 +202,16 @@ const LiveSession = () => {
     }
     if (localRef.current) localRef.current.srcObject = null;
     if (remoteRef.current) remoteRef.current.srcObject = null;
-    remoteMediaStream.current = new MediaStream(); // reset for next call
+    remoteMediaStream.current = new MediaStream(); // reset remote stream for next call
     setInCall(false);
     setRoomId("");
     setRemoteUserId(null);
   };
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async () => {
     const id = Math.random().toString(36).substring(2, 10);
-    joinRoom(id);
+    console.log("🆕 Creating room with ID:", id);
+    await joinRoom(id);
   };
 
   return (
@@ -214,7 +240,7 @@ const LiveSession = () => {
               width: "300px",
               border: "2px solid green",
               borderRadius: "8px",
-              background: "black"
+              background: "black",
             }}
           />
 
@@ -226,7 +252,7 @@ const LiveSession = () => {
               width: "300px",
               border: "2px solid blue",
               borderRadius: "8px",
-              background: "black"
+              background: "black",
             }}
           />
 
