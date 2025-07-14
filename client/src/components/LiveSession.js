@@ -65,8 +65,18 @@ const LiveSession = () => {
 
  const createPeerConnection = () => {
   peerRef.current = new RTCPeerConnection({
-    iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    iceServers: [
+      {
+        urls: "stun:stun.l.google.com:19302"
+      },
+      {
+        urls: "turn:relay1.expressturn.com:3478",
+        username: "efJQy92g1Zyb7VNaYq7Z8g==",
+        credential: "kF1Wh5H8iIWNoYV1"
+      }
+    ]
   });
+
 
   peerRef.current.onicecandidate = (event) => {
     if (event.candidate) {
