@@ -113,28 +113,34 @@ const LiveSession = () => {
     };
 
     peerRef.current.ontrack = (event) => {
-      console.log("🔵 Received remote track:", event.track.kind);
+  console.log("🔵 Received remote track:", event.track.kind);
 
-      if (!remoteRef.current.srcObject) {
-        remoteRef.current.srcObject = new MediaStream();
-      }
+  if (!remoteRef.current) {
+    console.warn("⚠️ remoteRef is not available yet");
+    return;
+  }
 
-      const stream = remoteRef.current.srcObject;
-      const trackAlreadyAdded = stream.getTracks().some(
-        (t) => t.id === event.track.id
-      );
+  if (!remoteRef.current.srcObject) {
+    remoteRef.current.srcObject = new MediaStream();
+  }
 
-      if (!trackAlreadyAdded) {
-        stream.addTrack(event.track);
-        console.log("✅ Track added to remote stream");
-      }
+  const stream = remoteRef.current.srcObject;
+  const trackAlreadyAdded = stream.getTracks().some(
+    (t) => t.id === event.track.id
+  );
 
-      remoteRef.current.onloadedmetadata = () => {
-        remoteRef.current.play().catch(err =>
-          console.error("❌ Error playing remote video:", err)
-        );
-      };
-    };
+  if (!trackAlreadyAdded) {
+    stream.addTrack(event.track);
+    console.log("✅ Track added to remote stream");
+  }
+
+  remoteRef.current.onloadedmetadata = () => {
+    remoteRef.current.play().catch(err =>
+      console.error("❌ Error playing remote video:", err)
+    );
+  };
+};
+
 
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
