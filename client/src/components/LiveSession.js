@@ -4,6 +4,7 @@ import { io } from "socket.io-client";
 const socket = io("https://skillswap-backend-jxyu.onrender.com", {
   transports: ["websocket"],
 });
+window.socket = socket;
 
 const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
