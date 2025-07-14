@@ -32,10 +32,12 @@ app.use("/api/sessions", sessionRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "*", 
     methods: ["GET", "POST"],
-  },
+    credentials: true
+  }
 });
+
 
 const rooms = {}; // { roomId: [socketId1, socketId2] }
 const users = {}; // { socketId: username }
