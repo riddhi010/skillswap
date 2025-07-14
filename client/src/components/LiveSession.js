@@ -92,27 +92,33 @@ const LiveSession = () => {
       }
     };
 
-  peerRef.current.ontrack = (event) => {
+ peerRef.current.ontrack = (event) => {
   console.log("🔵 Received remote track");
 
-  const [remoteStream] = event.streams;
+  // Avoid reassigning if already set
+  if (!remoteRef.current.srcObject) {
+    const inboundStream = new MediaStream();
+    inboundStream.addTrack(event.track);
+    remoteRef.current.srcObject = inboundStream;
 
-  if (remoteRef.current) {
-    if (remoteRef.current.srcObject !== remoteStream) {
-      remoteRef.current.srcObject = remoteStream;
-
-      // Delay to let the video element fully bind before playing
-      remoteRef.current.onloadedmetadata = () => {
-        remoteRef.current
-          .play()
-          .then(() => console.log("▶️ Remote video playing"))
-          .catch((err) =>
-            console.error("❌ Error playing remote video:", err)
-          );
-      };
+    // Play after metadata loads to avoid DOMException
+    remoteRef.current.onloadedmetadata = () => {
+      remoteRef.current
+        .play()
+        .then(() => console.log("▶️ Remote video playing"))
+        .catch((err) =>
+          console.error("❌ Error playing remote video:", err)
+        );
+    };
+  } else {
+    // Add track only if not already added
+    const currentTracks = remoteRef.current.srcObject.getTracks();
+    if (!currentTracks.find((t) => t.id === event.track.id)) {
+      remoteRef.current.srcObject.addTrack(event.track);
     }
   }
 };
+
 
 
 
