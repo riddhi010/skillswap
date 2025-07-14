@@ -14,9 +14,17 @@ const LiveSession = () => {
   const localRef = useRef(null);
   const remoteRef = useRef(null);
   const localStream = useRef(null);
+  const remoteMediaStream = useRef(new MediaStream());
   const peerRef = useRef(null);
   const isOfferer = useRef(false);
   const iceQueue = useRef([]);
+
+  // Assign remote stream to video element ONCE after component mounts
+  useEffect(() => {
+    if (remoteRef.current) {
+      remoteRef.current.srcObject = remoteMediaStream.current;
+    }
+  }, []);
 
   useEffect(() => {
     socket.on("user-joined", ({ userId }) => {
@@ -35,7 +43,6 @@ const LiveSession = () => {
       await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
       console.log("✅ Remote description set from offer");
 
-      // Drain queued ICE candidates
       while (iceQueue.current.length) {
         const candidate = iceQueue.current.shift();
         await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -57,7 +64,6 @@ const LiveSession = () => {
         await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
         console.log("✅ Remote description set from answer");
 
-        // Drain queued ICE candidates
         while (iceQueue.current.length) {
           const candidate = iceQueue.current.shift();
           await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -113,34 +119,17 @@ const LiveSession = () => {
     };
 
     peerRef.current.ontrack = (event) => {
-  console.log("🔵 Received remote track:", event.track.kind);
+      console.log("🔵 Remote track received:", event.track.kind);
+      const stream = remoteMediaStream.current;
+      const alreadyExists = stream.getTracks().some(
+        (t) => t.id === event.track.id
+      );
 
-  if (!remoteRef.current) {
-    console.warn("⚠️ remoteRef is not available yet");
-    return;
-  }
-
-  if (!remoteRef.current.srcObject) {
-    remoteRef.current.srcObject = new MediaStream();
-  }
-
-  const stream = remoteRef.current.srcObject;
-  const trackAlreadyAdded = stream.getTracks().some(
-    (t) => t.id === event.track.id
-  );
-
-  if (!trackAlreadyAdded) {
-    stream.addTrack(event.track);
-    console.log("✅ Track added to remote stream");
-  }
-
-  remoteRef.current.onloadedmetadata = () => {
-    remoteRef.current.play().catch(err =>
-      console.error("❌ Error playing remote video:", err)
-    );
-  };
-};
-
+      if (!alreadyExists) {
+        stream.addTrack(event.track);
+        console.log("✅ Track added to remote stream");
+      }
+    };
 
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
@@ -162,7 +151,6 @@ const LiveSession = () => {
   const joinRoom = async (id) => {
     if (!id) return alert("Please enter a meeting ID");
 
-    // Setup local stream BEFORE checking room
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localRef.current.srcObject = stream;
     localStream.current = stream;
@@ -189,6 +177,7 @@ const LiveSession = () => {
     }
     if (localRef.current) localRef.current.srcObject = null;
     if (remoteRef.current) remoteRef.current.srcObject = null;
+    remoteMediaStream.current = new MediaStream(); // reset for next call
     setInCall(false);
     setRoomId("");
     setRemoteUserId(null);
