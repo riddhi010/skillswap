@@ -75,11 +75,16 @@ const LiveSession = () => {
   };
 
   peerRef.current.ontrack = (event) => {
-    console.log("Received remote track");
-    if (remoteRef.current) {
-      remoteRef.current.srcObject = event.streams[0];
-    }
-  };
+  console.log("Received remote track");
+
+  if (!remoteRef.current.srcObject) {
+    remoteRef.current.srcObject = new MediaStream();
+  }
+
+  const inboundStream = remoteRef.current.srcObject;
+  inboundStream.addTrack(event.track);
+};
+
 
   if (localStream.current) {
     localStream.current.getTracks().forEach((track) => {
