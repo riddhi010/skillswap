@@ -92,17 +92,29 @@ const LiveSession = () => {
       }
     };
 
-    peerRef.current.ontrack = (event) => {
+  peerRef.current.ontrack = (event) => {
   console.log("🔵 Received remote track");
   const [stream] = event.streams;
 
   if (remoteRef.current) {
-    remoteRef.current.srcObject = stream;
-    remoteRef.current.play().catch((err) => {
-      console.error("❌ Error playing remote video:", err);
-    });
+    if (remoteRef.current.srcObject !== stream) {
+      remoteRef.current.srcObject = stream;
+
+      // Wait a tick before playing to avoid race condition
+      setTimeout(() => {
+        remoteRef.current
+          .play()
+          .then(() => {
+            console.log("▶️ Remote video playing");
+          })
+          .catch((err) => {
+            console.error("❌ Error playing remote video:", err);
+          });
+      }, 100);
+    }
   }
 };
+
 
 
     if (localStream.current) {
