@@ -34,7 +34,7 @@ const LiveSession = () => {
       localRef.current.srcObject = stream;
       localStream.current = stream;
 
-      // 👇👇👇 ADD THIS LOG
+      
       const videoTracks = stream.getVideoTracks();
       console.log("📤 Sending video track:", videoTracks[0]);
       console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
