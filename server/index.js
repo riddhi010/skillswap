@@ -40,6 +40,7 @@ io.on("connection", (socket) => {
   console.log("✅ Connected:", socket.id);
 
   socket.on("join-room", ({ roomId, username }) => {
+    console.log(`🚪 ${username} joined room: ${roomId}`);
     socket.join(roomId);
     socket.roomId = roomId;
     users[socket.id] = username || "User";
