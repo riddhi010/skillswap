@@ -94,24 +94,26 @@ const LiveSession = () => {
 
   peerRef.current.ontrack = (event) => {
   console.log("🔵 Received remote track");
-  
-  const [stream] = event.streams;
-  if (remoteRef.current) {
-    if (remoteRef.current.srcObject !== stream) {
-      remoteRef.current.srcObject = stream;
 
-      // Ensure the video plays
-      setTimeout(() => {
+  const [remoteStream] = event.streams;
+
+  if (remoteRef.current) {
+    if (remoteRef.current.srcObject !== remoteStream) {
+      remoteRef.current.srcObject = remoteStream;
+
+      // Delay to let the video element fully bind before playing
+      remoteRef.current.onloadedmetadata = () => {
         remoteRef.current
           .play()
           .then(() => console.log("▶️ Remote video playing"))
           .catch((err) =>
             console.error("❌ Error playing remote video:", err)
           );
-      }, 100); // delay a bit to avoid race condition
+      };
     }
   }
 };
+
 
 
 
