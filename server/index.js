@@ -1,6 +1,3 @@
-// ✅ Final, fully working LIVE SESSION system
-
-// ================== SERVER: index.js ==================
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -16,7 +13,6 @@ app.use(cors({
   origin: "https://skillswap-client-jm4y.onrender.com",
   credentials: true,
 }));
-
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -25,25 +21,23 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/users", require("./routes/users"));
-const sessionRoutes = require("./routes/sessionRoutes");
-app.use("/api/sessions", sessionRoutes);
-
+app.use("/api/sessions", require("./routes/sessionRoutes"));
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-
 const rooms = {}; // { roomId: [socketId1, socketId2] }
 const users = {}; // { socketId: username }
 
 io.on("connection", (socket) => {
-  console.log("Connected:", socket.id);
+  console.log("✅ Connected:", socket.id);
 
   socket.on("join-room", ({ roomId, username }) => {
     socket.join(roomId);
@@ -68,21 +62,23 @@ io.on("connection", (socket) => {
   });
 
   socket.on("check-room", (roomId, callback) => {
-  const room = io.sockets.adapter.rooms.get(roomId);
-  callback(!!room && room.size > 0);
-});
-
-
-  socket.on("offer", ({ sdp, caller, target }) => {
-    io.to(target).emit("offer", { sdp, caller });
+    const room = io.sockets.adapter.rooms.get(roomId);
+    callback(!!room && room.size > 0);
   });
 
-  socket.on("answer", ({ sdp, responder, target }) => {
-    io.to(target).emit("answer", { sdp, responder });
+  // ✅ Correctly handle offer
+  socket.on("offer", ({ offer, roomId }) => {
+    socket.to(roomId).emit("offer", { offer });
   });
 
-  socket.on("ice-candidate", ({ candidate, target }) => {
-    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
+  // ✅ Correctly handle answer
+  socket.on("answer", ({ answer, roomId }) => {
+    socket.to(roomId).emit("answer", { answer });
+  });
+
+  // ✅ Correctly handle ICE candidates
+  socket.on("ice-candidate", ({ candidate, roomId }) => {
+    socket.to(roomId).emit("ice-candidate", { candidate });
   });
 
   socket.on("chat-message", ({ roomId, message }) => {
@@ -113,4 +109,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
