@@ -42,15 +42,14 @@ io.on("connection", (socket) => {
   socket.on("join-room", ({ roomId, username }) => {
     socket.join(roomId);
     socket.roomId = roomId;
-    users[socket.id] = username;
+    users[socket.id] = username || "User";
 
     if (!rooms[roomId]) rooms[roomId] = [];
 
-    // Notify existing users
     rooms[roomId].forEach((id) => {
       io.to(id).emit("user-joined", {
         userId: socket.id,
-        username,
+        username: users[socket.id],
       });
       socket.emit("user-joined", {
         userId: id,
@@ -66,24 +65,16 @@ io.on("connection", (socket) => {
     callback(!!room && room.size > 0);
   });
 
-  // ✅ Correctly handle offer
-  socket.on("offer", ({ offer, roomId }) => {
-    socket.to(roomId).emit("offer", { offer });
+  socket.on("offer", ({ sdp, caller, target }) => {
+    io.to(target).emit("offer", { sdp, caller });
   });
 
-  // ✅ Correctly handle answer
-  socket.on("answer", ({ answer, roomId }) => {
-    socket.to(roomId).emit("answer", { answer });
+  socket.on("answer", ({ sdp, responder, target }) => {
+    io.to(target).emit("answer", { sdp, responder });
   });
 
-  // ✅ Correctly handle ICE candidates
-  socket.on("ice-candidate", ({ candidate, roomId }) => {
-    socket.to(roomId).emit("ice-candidate", { candidate });
-  });
-
-  socket.on("chat-message", ({ roomId, message }) => {
-    const username = users[socket.id] || "Anonymous";
-    io.to(roomId).emit("chat-message", { sender: username, message });
+  socket.on("ice-candidate", ({ candidate, target }) => {
+    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
   });
 
   socket.on("leave-room", ({ roomId, username }) => {
@@ -97,13 +88,11 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     const roomId = socket.roomId;
     const username = users[socket.id] || "User";
-
     if (roomId && rooms[roomId]) {
       rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
       socket.to(roomId).emit("user-left", { userId: socket.id, username });
       if (rooms[roomId].length === 0) delete rooms[roomId];
     }
-
     delete users[socket.id];
   });
 });
