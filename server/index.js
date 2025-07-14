@@ -13,7 +13,7 @@ connectDB();
 
 const app = express();
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin: "https://skillswap-client-jm4y.onrender.com",
   credentials: true,
 }));
 
