@@ -93,11 +93,17 @@ const LiveSession = () => {
     };
 
     peerRef.current.ontrack = (event) => {
-      if (!remoteRef.current.srcObject) {
-        remoteRef.current.srcObject = new MediaStream();
-      }
-      remoteRef.current.srcObject.addTrack(event.track);
-    };
+  console.log("🔵 Received remote track");
+  const [stream] = event.streams;
+
+  if (remoteRef.current) {
+    remoteRef.current.srcObject = stream;
+    remoteRef.current.play().catch((err) => {
+      console.error("❌ Error playing remote video:", err);
+    });
+  }
+};
+
 
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
