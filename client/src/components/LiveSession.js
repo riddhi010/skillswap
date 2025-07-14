@@ -257,16 +257,20 @@ const LiveSession = () => {
           />
 
           <video
-            ref={remoteRef}
-            autoPlay
-            playsInline
-            style={{
-              width: "300px",
-              border: "2px solid blue",
-              borderRadius: "8px",
-              background: "black",
-            }}
-          />
+  ref={remoteRef}
+  id="remoteVideo"
+  autoPlay
+  playsInline
+  controls
+  style={{
+    width: "600px",
+    height: "400px",
+    border: "4px solid red",
+    backgroundColor: "yellow",
+    borderRadius: "8px",
+  }}
+/>
+
 
           <br />
           <button onClick={leaveCall}>Leave</button>
