@@ -19,6 +19,41 @@ const LiveSession = () => {
   const isOfferer = useRef(false);
   const iceQueue = useRef([]);
 
+  // Defer media setup until video element is mounted
+  useEffect(() => {
+    if (inCall && roomId) {
+      const setupMediaAndJoin = async () => {
+        try {
+          console.log("🎥 Requesting media access...");
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+
+          if (localRef.current) {
+            localRef.current.srcObject = stream;
+            localStream.current = stream;
+            console.log("✅ Local media stream ready");
+          } else {
+            console.error("❌ localRef.current is null!");
+            return;
+          }
+
+          socket.emit("check-room", roomId, (roomExists) => {
+            isOfferer.current = !roomExists;
+            console.log(`📡 Room ${roomId} exists?`, roomExists);
+            socket.emit("join-room", { roomId, username: "User" });
+          });
+        } catch (err) {
+          console.error("❌ Error accessing media:", err);
+          alert("Camera/Mic access denied or not available.");
+        }
+      };
+
+      setupMediaAndJoin();
+    }
+  }, [inCall, roomId]);
+
   useEffect(() => {
     socket.on("user-joined", ({ userId }) => {
       console.log("📥 User joined:", userId);
@@ -157,36 +192,13 @@ const LiveSession = () => {
     });
   };
 
-  const joinRoom = async (id) => {
+  const joinRoom = (id) => {
     if (!id) {
       alert("Please enter a meeting ID");
       return;
     }
-
-    try {
-      console.log("🎥 Requesting media access...");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
-
-      localRef.current.srcObject = stream;
-      localStream.current = stream;
-
-      console.log("✅ Local media stream ready");
-
-      setRoomId(id);
-      setInCall(true);
-
-      socket.emit("check-room", id, (roomExists) => {
-        isOfferer.current = !roomExists;
-        console.log(`📡 Room ${id} exists?`, roomExists);
-        socket.emit("join-room", { roomId: id, username: "User" });
-      });
-    } catch (err) {
-      console.error("❌ Error accessing media:", err);
-      alert("Camera/Mic access denied or not available.");
-    }
+    setRoomId(id);
+    setInCall(true);
   };
 
   const leaveCall = () => {
@@ -208,10 +220,10 @@ const LiveSession = () => {
     setRemoteUserId(null);
   };
 
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = () => {
     const id = Math.random().toString(36).substring(2, 10);
     console.log("🆕 Creating room with ID:", id);
-    await joinRoom(id);
+    joinRoom(id);
   };
 
   return (
