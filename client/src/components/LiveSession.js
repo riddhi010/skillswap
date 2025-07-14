@@ -20,31 +20,34 @@ const LiveSession = () => {
   const iceQueue = useRef([]);
 
   // Defer media setup until video element is mounted
-  useEffect(() => {
-    if (inCall && roomId) {
-      const setupMediaAndJoin = async () => {
-  try {
-    console.log("🎥 Requesting media access...");
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
+ useEffect(() => {
+  if (inCall && roomId) {
+    const setupMediaAndJoin = async () => {
+      try {
+        console.log("🎥 Requesting media access...");
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
 
-    if (localRef.current) {
-      localRef.current.srcObject = stream;
-      localStream.current = stream;
+        if (localRef.current) {
+          localRef.current.srcObject = stream;
+          localStream.current = stream;
 
-      
-      const videoTracks = stream.getVideoTracks();
-      console.log("📤 Sending video track:", videoTracks[0]);
-      console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
-      console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
-    }
+          const videoTracks = stream.getVideoTracks();
+          console.log("📤 Sending video track:", videoTracks[0]);
+          console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+          console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+        }
+      } catch (error) {
+        console.error("❌ Error accessing media:", error);
+      }
+    };
 
+    setupMediaAndJoin(); // ✅ call once here
+  }
+}, [inCall, roomId]);
 
-      setupMediaAndJoin();
-    }
-  }, [inCall, roomId]);
 
   useEffect(() => {
     socket.on("user-joined", ({ userId }) => {
