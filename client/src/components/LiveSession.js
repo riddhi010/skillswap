@@ -5,7 +5,6 @@ const socket = io("https://skillswap-backend-jxyu.onrender.com", {
   transports: ["websocket"]
 });
 
-
 const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
   const [inputRoomId, setInputRoomId] = useState("");
@@ -18,6 +17,7 @@ const LiveSession = () => {
   const localStream = useRef(null);
   const peerRef = useRef(null);
   const isOfferer = useRef(false);
+  const pendingCandidates = useRef([]);
 
   useEffect(() => {
     socket.on("user-joined", () => {
@@ -28,25 +28,60 @@ const LiveSession = () => {
     });
 
     socket.on("offer", async ({ offer }) => {
-      console.log("Received offer");
+      console.log("Received offer", offer);
+      if (!offer || !offer.sdp || !offer.type) {
+        console.error("Invalid offer received:", offer);
+        return;
+      }
+
       if (!peerRef.current) createPeerConnection();
 
-      await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await peerRef.current.createAnswer();
-      await peerRef.current.setLocalDescription(answer);
-      socket.emit("answer", { answer, roomId });
+      try {
+        await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerRef.current.createAnswer();
+        await peerRef.current.setLocalDescription(answer);
+        socket.emit("answer", { answer, roomId });
+
+        for (const candidate of pendingCandidates.current) {
+          try {
+            await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {
+            console.error("Error applying buffered ICE candidate", e);
+          }
+        }
+        pendingCandidates.current = [];
+      } catch (error) {
+        console.error("Error handling offer:", error);
+      }
     });
 
     socket.on("answer", async ({ answer }) => {
       console.log("Received answer");
-      if (peerRef.current.signalingState === "stable") return;
-      await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      try {
+        if (peerRef.current.signalingState === "stable") return;
+        await peerRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+        for (const candidate of pendingCandidates.current) {
+          try {
+            await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (e) {
+            console.error("Error applying buffered ICE candidate", e);
+          }
+        }
+        pendingCandidates.current = [];
+      } catch (error) {
+        console.error("Error handling answer:", error);
+      }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
       try {
         console.log("Received ICE candidate");
-        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        if (peerRef.current && peerRef.current.remoteDescription) {
+          await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        } else {
+          console.log("Remote description not set yet — storing candidate");
+          pendingCandidates.current.push(candidate);
+        }
       } catch (e) {
         console.error("Error adding received ICE candidate", e);
       }
@@ -66,50 +101,42 @@ const LiveSession = () => {
     };
   }, [roomId]);
 
- const createPeerConnection = () => {
-  peerRef.current = new RTCPeerConnection({
-  iceServers: [
-    {
-      urls: "stun:stun.l.google.com:19302"
-    },
-    {
-  urls: "turn:openrelay.metered.ca:80",
-  username: "openrelayproject",
-  credential: "openrelayproject"
-}
+  const createPeerConnection = () => {
+    peerRef.current = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
+      ]
+    });
 
-  ]
-});
+    peerRef.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket.emit("ice-candidate", { candidate: event.candidate, roomId });
+      }
+    };
 
+    peerRef.current.oniceconnectionstatechange = () => {
+      console.log("ICE connection state:", peerRef.current.iceConnectionState);
+    };
 
+    peerRef.current.ontrack = (event) => {
+      console.log("🔵 Received remote track");
+      if (!remoteRef.current.srcObject) {
+        remoteRef.current.srcObject = new MediaStream();
+      }
+      remoteRef.current.srcObject.addTrack(event.track);
+    };
 
-  peerRef.current.onicecandidate = (event) => {
-    if (event.candidate) {
-      socket.emit("ice-candidate", { candidate: event.candidate, roomId });
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => {
+        peerRef.current.addTrack(track, localStream.current);
+      });
     }
   };
-
-   peerRef.current.oniceconnectionstatechange = () => {
-  console.log("ICE connection state:", peerRef.current.iceConnectionState);
-};
-
-
- peerRef.current.ontrack = (event) => {
-  console.log("🔵 Received remote track");
-  const remoteStream = new MediaStream();
-  remoteStream.addTrack(event.track);
-  remoteRef.current.srcObject = remoteStream;
-};
-
-
-
-  if (localStream.current) {
-    localStream.current.getTracks().forEach((track) => {
-      peerRef.current.addTrack(track, localStream.current);
-    });
-  }
-};
-
 
   const callUser = async () => {
     if (!peerRef.current) {
@@ -130,7 +157,6 @@ const LiveSession = () => {
       localRef.current.srcObject = stream;
       localStream.current = stream;
 
-      // Check if room already exists to set offerer flag
       socket.emit("check-room", id, (roomExists) => {
         isOfferer.current = !roomExists;
         socket.emit("join-room", id);
