@@ -23,32 +23,24 @@ const LiveSession = () => {
   useEffect(() => {
     if (inCall && roomId) {
       const setupMediaAndJoin = async () => {
-        try {
-          console.log("🎥 Requesting media access...");
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
+  try {
+    console.log("🎥 Requesting media access...");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
 
-          if (localRef.current) {
-            localRef.current.srcObject = stream;
-            localStream.current = stream;
-            console.log("✅ Local media stream ready");
-          } else {
-            console.error("❌ localRef.current is null!");
-            return;
-          }
+    if (localRef.current) {
+      localRef.current.srcObject = stream;
+      localStream.current = stream;
 
-          socket.emit("check-room", roomId, (roomExists) => {
-            isOfferer.current = !roomExists;
-            console.log(`📡 Room ${roomId} exists?`, roomExists);
-            socket.emit("join-room", { roomId, username: "User" });
-          });
-        } catch (err) {
-          console.error("❌ Error accessing media:", err);
-          alert("Camera/Mic access denied or not available.");
-        }
-      };
+      // 👇👇👇 ADD THIS LOG
+      const videoTracks = stream.getVideoTracks();
+      console.log("📤 Sending video track:", videoTracks[0]);
+      console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+      console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+    }
+
 
       setupMediaAndJoin();
     }
