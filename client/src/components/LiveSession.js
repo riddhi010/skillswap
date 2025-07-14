@@ -28,32 +28,27 @@ const LiveSession = () => {
     });
 
     socket.on("offer", async ({ offer }) => {
-      console.log("Received offer", offer);
-      if (!offer || !offer.sdp || !offer.type) {
-        console.error("Invalid offer received:", offer);
-        return;
-      }
+  console.log("Received offer", offer);
+  
+  if (!offer || !offer.type || !offer.sdp) {
+    console.error("❌ Invalid offer received:", offer);
+    return;
+  }
 
-      if (!peerRef.current) createPeerConnection();
+  if (!peerRef.current) createPeerConnection();
 
-      try {
-        await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerRef.current.createAnswer();
-        await peerRef.current.setLocalDescription(answer);
-        socket.emit("answer", { answer, roomId });
+  try {
+    await peerRef.current.setRemoteDescription(new RTCSessionDescription(offer));
 
-        for (const candidate of pendingCandidates.current) {
-          try {
-            await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-          } catch (e) {
-            console.error("Error applying buffered ICE candidate", e);
-          }
-        }
-        pendingCandidates.current = [];
-      } catch (error) {
-        console.error("Error handling offer:", error);
-      }
-    });
+    const answer = await peerRef.current.createAnswer();
+    await peerRef.current.setLocalDescription(answer);
+
+    socket.emit("answer", { answer: peerRef.current.localDescription, roomId });
+  } catch (err) {
+    console.error("❌ Error setting remote description or sending answer:", err);
+  }
+});
+
 
     socket.on("answer", async ({ answer }) => {
       console.log("Received answer");
@@ -138,14 +133,29 @@ const LiveSession = () => {
     }
   };
 
-  const callUser = async () => {
-    if (!peerRef.current) {
-      createPeerConnection();
-    }
+ const callUser = async () => {
+  if (!peerRef.current) {
+    createPeerConnection();
+  }
+
+  try {
     const offer = await peerRef.current.createOffer();
     await peerRef.current.setLocalDescription(offer);
-    socket.emit("offer", { offer, roomId });
-  };
+
+    // Wait for local description to be fully set
+    if (peerRef.current.localDescription) {
+      socket.emit("offer", {
+        offer: peerRef.current.localDescription, // ✅ safer
+        roomId,
+      });
+    } else {
+      console.warn("Local description is not set yet.");
+    }
+  } catch (err) {
+    console.error("Error creating or sending offer:", err);
+  }
+};
+
 
   const joinRoom = async (id) => {
     if (!id) return alert("Please enter a meeting ID");
