@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("https://skillswap-backend-jxyu.onrender.com");
+const socket = io("https://skillswap-backend-jxyu.onrender.com", {
+  transports: ["websocket"]
+});
+
 
 const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
@@ -65,17 +68,18 @@ const LiveSession = () => {
 
  const createPeerConnection = () => {
   peerRef.current = new RTCPeerConnection({
-    iceServers: [
-      {
-        urls: "stun:stun.l.google.com:19302"
-      },
-      {
-        urls: "turn:relay1.expressturn.com:3478",
-        username: "efJQy92g1Zyb7VNaYq7Z8g==",
-        credential: "kF1Wh5H8iIWNoYV1"
-      }
-    ]
-  });
+  iceServers: [
+    {
+      urls: "stun:stun.l.google.com:19302"
+    },
+    {
+      urls: "turn:relay1.expressturn.com:3478",
+      username: "efJQy92g1Zyb7VNaYq7Z8g==",
+      credential: "kF1Wh5H8iIWNoYV1"
+    }
+  ]
+});
+
 
 
   peerRef.current.onicecandidate = (event) => {
@@ -84,16 +88,18 @@ const LiveSession = () => {
     }
   };
 
-  peerRef.current.ontrack = (event) => {
-  console.log("Received remote track");
-
-  if (!remoteRef.current.srcObject) {
-    remoteRef.current.srcObject = new MediaStream();
-  }
-
-  const inboundStream = remoteRef.current.srcObject;
-  inboundStream.addTrack(event.track);
+   peerRef.current.oniceconnectionstatechange = () => {
+  console.log("ICE connection state:", peerRef.current.iceConnectionState);
 };
+
+
+ peerRef.current.ontrack = (event) => {
+  console.log("🔵 Received remote track");
+  const remoteStream = new MediaStream();
+  remoteStream.addTrack(event.track);
+  remoteRef.current.srcObject = remoteStream;
+};
+
 
 
   if (localStream.current) {
