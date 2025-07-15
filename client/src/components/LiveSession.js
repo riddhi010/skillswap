@@ -21,7 +21,7 @@ const LiveSession = () => {
   useEffect(() => {
     if (!inCall) return;
 
-    const startCall = async () => {
+    const initCall = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         setStream(mediaStream);
@@ -34,13 +34,16 @@ const LiveSession = () => {
         });
 
         peerConnection.current.ontrack = (event) => {
+          console.log("🔁 ontrack fired");
           if (remoteVideo.current) {
             remoteVideo.current.srcObject = event.streams[0];
+            console.log("✅ Remote stream set");
           }
         };
 
         peerConnection.current.onicecandidate = (event) => {
           if (event.candidate && remoteSocketId) {
+            console.log("📡 Sending ICE candidate");
             socket.emit("ice-candidate", {
               target: remoteSocketId,
               candidate: event.candidate,
@@ -54,20 +57,20 @@ const LiveSession = () => {
       }
     };
 
-    startCall();
+    initCall();
   }, [inCall]);
 
   useEffect(() => {
     socket.on("room-created", () => {
-      console.log("Room created. Waiting for peer...");
+      console.log("✅ Room created. Waiting for peer...");
     });
 
     socket.on("room-joined", () => {
-      console.log("Room joined. Waiting for peer to join.");
+      console.log("✅ Room joined. Waiting for peer to join...");
     });
 
     socket.on("peer-joined", async (id) => {
-      console.log("Peer joined:", id);
+      console.log("🤝 Peer joined:", id);
       setRemoteSocketId(id);
 
       const offer = await peerConnection.current.createOffer();
@@ -77,13 +80,16 @@ const LiveSession = () => {
         target: id,
         sdp: offer,
       });
+
+      console.log("📤 Offer sent to:", id);
     });
 
     socket.on("offer", async ({ sdp, caller }) => {
-      console.log("Received offer from:", caller);
+      console.log("📥 Received offer from:", caller);
       setRemoteSocketId(caller);
 
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      console.log("📄 Remote description set (offer)");
 
       const answer = await peerConnection.current.createAnswer();
       await peerConnection.current.setLocalDescription(answer);
@@ -92,24 +98,29 @@ const LiveSession = () => {
         target: caller,
         sdp: answer,
       });
+
+      console.log("📤 Answer sent back to:", caller);
     });
 
     socket.on("answer", async ({ sdp }) => {
-      console.log("Received answer");
+      console.log("📥 Received answer");
       await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      console.log("📄 Remote description set (answer)");
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
       if (candidate) {
         try {
           await peerConnection.current.addIceCandidate(candidate);
+          console.log("❄️ Added ICE candidate");
         } catch (e) {
-          console.error("Error adding received ice candidate", e);
+          console.error("❌ Error adding ICE:", e);
         }
       }
     });
 
     socket.on("peer-disconnected", () => {
+      console.log("🚫 Peer disconnected");
       if (remoteVideo.current) remoteVideo.current.srcObject = null;
     });
 
