@@ -27,24 +27,24 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://skillswap-client-jm4y.onrender.com",
+    origin: "*",
     methods: ["GET", "POST"],
-    credentials: true
+    
   }
 });
 
 
 io.on("connection", (socket) => {
-  console.log("Connected:", socket.id);
+  console.log("User connected:", socket.id);
 
   socket.on("join-room", (roomId) => {
     const room = io.sockets.adapter.rooms.get(roomId);
-    const numberOfClients = room ? room.size : 0;
+    const numClients = room ? room.size : 0;
 
-    if (numberOfClients === 0) {
+    if (numClients === 0) {
       socket.join(roomId);
       socket.emit("room-created");
-    } else if (numberOfClients === 1) {
+    } else if (numClients === 1) {
       socket.join(roomId);
       socket.emit("room-joined");
       socket.to(roomId).emit("peer-joined", socket.id);
@@ -75,7 +75,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("Disconnected:", socket.id);
+    console.log("User disconnected:", socket.id);
     socket.broadcast.emit("peer-disconnected", socket.id);
   });
 });
