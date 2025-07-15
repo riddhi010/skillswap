@@ -40,7 +40,8 @@ io.on("connection", (socket) => {
   console.log("✅ Connected:", socket.id);
 
   socket.on("join-room", ({ roomId, username }) => {
-    console.log(🚪 ${username} joined room: ${roomId});
+    console.log(`🚪 ${username} joined room: ${roomId}`);
+
     socket.join(roomId);
     socket.roomId = roomId;
     users[socket.id] = username || "User";
@@ -99,4 +100,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(🚀 Server running on port ${PORT}));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
