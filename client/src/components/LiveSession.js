@@ -33,17 +33,24 @@ const LiveSession = () => {
           peerConnection.current.addTrack(track, mediaStream);
         });
 
-        peerConnection.current.ontrack = (event) => {
+        peerConnection.current.ontrack = async (event) => {
           console.log("🔁 ontrack fired");
-          if (remoteVideo.current) {
-            remoteVideo.current.srcObject = event.streams[0];
-            console.log("✅ Remote stream set");
+          if (event.streams && event.streams[0]) {
+            const remoteStream = event.streams[0];
+            if (remoteVideo.current) {
+              remoteVideo.current.srcObject = remoteStream;
+              try {
+                await remoteVideo.current.play();
+                console.log("✅ Remote video playing");
+              } catch (err) {
+                console.warn("⚠️ Remote video play failed:", err);
+              }
+            }
           }
         };
 
         peerConnection.current.onicecandidate = (event) => {
           if (event.candidate && remoteSocketId) {
-            console.log("📡 Sending ICE candidate");
             socket.emit("ice-candidate", {
               target: remoteSocketId,
               candidate: event.candidate,
@@ -168,6 +175,7 @@ const LiveSession = () => {
               ref={remoteVideo}
               autoPlay
               playsInline
+              muted // ✅ only during testing; remove later for real audio
               style={{ width: 300, border: "2px solid black", borderRadius: "8px" }}
             />
           </div>
