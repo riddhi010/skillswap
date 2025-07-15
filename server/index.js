@@ -1,102 +1,313 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
-const http = require("http");
-const { Server } = require("socket.io");
+import React, { useEffect, useRef, useState } from "react";
+import { io } from "socket.io-client";
 
-dotenv.config();
-connectDB();
-
-const app = express();
-app.use(cors({
-  origin: "https://skillswap-client-jm4y.onrender.com",
-  credentials: true,
-}));
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.send("SkillSwap API is running...");
+const socket = io("https://skillswap-backend-jxyu.onrender.com", {
+  transports: ["websocket"],
 });
+window.socket = socket;
 
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/users", require("./routes/users"));
-app.use("/api/sessions", require("./routes/sessionRoutes"));
+const LiveSession = () => {
+  const [roomId, setRoomId] = useState("");
+  const [inputRoomId, setInputRoomId] = useState("");
+  const [inCall, setInCall] = useState(false);
+  const [remoteUserId, setRemoteUserId] = useState(null);
 
-const server = http.createServer(app);
+  const localRef = useRef(null);
+  const remoteRef = useRef(null);
+  const localStream = useRef(null);
+  const remoteMediaStream = useRef(new MediaStream());
+  const peerRef = useRef(null);
+  const isOfferer = useRef(false);
+  const iceQueue = useRef([]);
 
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
+  useEffect(() => {
+    if (inCall && roomId) {
+      const setupMedia = async () => {
+        try {
+          console.log("🎥 Requesting media access...");
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
 
-const rooms = {}; // { roomId: [socketId1, socketId2] }
-const users = {}; // { socketId: username }
+          localStream.current = stream;
+          if (localRef.current) {
+            localRef.current.srcObject = stream;
+          }
 
-io.on("connection", (socket) => {
-  console.log("✅ Connected:", socket.id);
+          const videoTracks = stream.getVideoTracks();
+          console.log("📤 Sending video track:", videoTracks[0]);
+        } catch (error) {
+          console.error("❌ Error accessing media:", error);
+        }
+      };
 
-  socket.on("join-room", ({ roomId, username }) => {
-    console.log(`🚪 ${username} joined room: ${roomId}`);
-    socket.join(roomId);
-    socket.roomId = roomId;
-    users[socket.id] = username || "User";
+      setupMedia();
+    }
+  }, [inCall, roomId]);
 
-    if (!rooms[roomId]) rooms[roomId] = [];
+  useEffect(() => {
+    socket.on("user-joined", ({ userId }) => {
+      console.log("📥 User joined:", userId);
+      setRemoteUserId(userId);
+      if (isOfferer.current && !peerRef.current) {
+        createPeerConnection();
+        makeOffer(userId);
+      }
+    });
 
-    rooms[roomId].forEach((id) => {
-      io.to(id).emit("user-joined", {
-        userId: socket.id,
-        username: users[socket.id],
-      });
-      socket.emit("user-joined", {
-        userId: id,
-        username: users[id],
+    socket.on("offer", async ({ sdp, caller }) => {
+      console.log("📥 Received offer");
+      setRemoteUserId(caller);
+      createPeerConnection();
+      await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      console.log("✅ Remote description set from offer");
+
+      while (iceQueue.current.length) {
+        const candidate = iceQueue.current.shift();
+        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("✅ ICE candidate added from queue");
+      }
+
+      const answer = await peerRef.current.createAnswer();
+      await peerRef.current.setLocalDescription(answer);
+      socket.emit("answer", {
+        sdp: answer,
+        responder: socket.id,
+        target: caller,
       });
     });
 
-    rooms[roomId].push(socket.id);
-  });
+    socket.on("answer", async ({ sdp }) => {
+      console.log("📥 Received answer");
+      if (peerRef.current.signalingState !== "stable") {
+        await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        console.log("✅ Remote description set from answer");
 
-  socket.on("check-room", (roomId, callback) => {
-    const room = io.sockets.adapter.rooms.get(roomId);
-    callback(!!room && room.size > 0);
-  });
+        while (iceQueue.current.length) {
+          const candidate = iceQueue.current.shift();
+          await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log("✅ ICE candidate added from queue");
+        }
+      }
+    });
 
-  socket.on("offer", ({ sdp, caller, target }) => {
-    io.to(target).emit("offer", { sdp, caller });
-  });
+    socket.on("ice-candidate", async ({ candidate }) => {
+      console.log("📥 ICE candidate received");
+      if (peerRef.current && peerRef.current.remoteDescription) {
+        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log("✅ ICE candidate added immediately");
+      } else {
+        iceQueue.current.push(candidate);
+        console.log("⏳ ICE candidate queued");
+      }
+    });
 
-  socket.on("answer", ({ sdp, responder, target }) => {
-    io.to(target).emit("answer", { sdp, responder });
-  });
+    socket.on("user-left", () => {
+      console.log("👋 User left");
+      endCall();
+    });
 
-  socket.on("ice-candidate", ({ candidate, target }) => {
-    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
-  });
+    return () => {
+      socket.off("user-joined");
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("ice-candidate");
+      socket.off("user-left");
+    };
+  }, [roomId]);
 
-  socket.on("leave-room", ({ roomId, username }) => {
-    socket.leave(roomId);
-    socket.to(roomId).emit("user-left", { userId: socket.id, username });
-    if (rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
+  const createPeerConnection = () => {
+    peerRef.current = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
+        },
+      ],
+    });
+
+    peerRef.current.onicecandidate = (event) => {
+      if (event.candidate && remoteUserId) {
+        socket.emit("ice-candidate", {
+          candidate: event.candidate,
+          target: remoteUserId,
+        });
+      }
+    };
+
+    peerRef.current.ontrack = (event) => {
+      console.log("🔵 Remote track received:", event.track.kind);
+
+      const stream = remoteMediaStream.current;
+      const alreadyExists = stream.getTracks().some(
+        (t) => t.id === event.track.id
+      );
+
+      if (!alreadyExists) {
+        stream.addTrack(event.track);
+        console.log("✅ Track added to remote stream");
+      }
+
+      const assignStreamToVideo = () => {
+        const video = remoteRef.current;
+        if (!video) {
+          console.warn("⏳ remoteRef not ready, retrying...");
+          setTimeout(assignStreamToVideo, 50);
+          return;
+        }
+
+        if (!video.srcObject) {
+          video.srcObject = remoteMediaStream.current;
+          console.log("✅ Remote stream assigned to video element");
+        }
+
+        video
+          .play()
+          .then(() => console.log("▶️ Remote video playing"))
+          .catch((err) => console.warn("⚠️ Error playing remote video:", err));
+      };
+
+      assignStreamToVideo();
+    };
+
+    // Add local tracks
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => {
+        console.log("🎯 Adding track:", track.kind);
+        peerRef.current.addTrack(track, localStream.current);
+      });
     }
-  });
 
-  socket.on("disconnect", () => {
-    const roomId = socket.roomId;
-    const username = users[socket.id] || "User";
-    if (roomId && rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
-      socket.to(roomId).emit("user-left", { userId: socket.id, username });
-      if (rooms[roomId].length === 0) delete rooms[roomId];
+    peerRef.current.oniceconnectionstatechange = () => {
+      console.log("🔄 ICE state:", peerRef.current.iceConnectionState);
+    };
+    peerRef.current.onconnectionstatechange = () => {
+      console.log("🟢 Connection state:", peerRef.current.connectionState);
+    };
+  };
+
+  const makeOffer = async (targetId) => {
+    const offer = await peerRef.current.createOffer();
+    await peerRef.current.setLocalDescription(offer);
+    socket.emit("offer", {
+      sdp: offer,
+      caller: socket.id,
+      target: targetId,
+    });
+  };
+
+  const joinRoom = async (id) => {
+    if (!id) {
+      alert("Please enter a meeting ID");
+      return;
     }
-    delete users[socket.id];
-  });
-});
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    setRoomId(id);
+    setInCall(true);
+
+    try {
+      console.log("🎥 Requesting media access...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      localStream.current = stream;
+      if (localRef.current) {
+        localRef.current.srcObject = stream;
+      }
+
+      socket.emit("check-room", id, (roomExists) => {
+        isOfferer.current = !roomExists;
+        console.log("📡 Room", id, "exists?", roomExists);
+        socket.emit("join-room", { roomId: id, username: "User" });
+      });
+    } catch (error) {
+      console.error("❌ Error accessing media:", error);
+    }
+  };
+
+  const leaveCall = () => {
+    socket.emit("leave-room", { roomId, username: "User" });
+    endCall();
+  };
+
+  const endCall = () => {
+    if (peerRef.current) peerRef.current.close();
+    peerRef.current = null;
+
+    if (localStream.current) {
+      localStream.current.getTracks().forEach((track) => track.stop());
+    }
+
+    if (localRef.current) localRef.current.srcObject = null;
+    if (remoteRef.current) remoteRef.current.srcObject = null;
+
+    remoteMediaStream.current = new MediaStream();
+    setInCall(false);
+    setRoomId("");
+    setRemoteUserId(null);
+  };
+
+  const handleCreateRoom = () => {
+    const id = Math.random().toString(36).substring(2, 10);
+    console.log("🆕 Creating room with ID:", id);
+    joinRoom(id);
+  };
+
+  return (
+    <div>
+      {!inCall ? (
+        <div>
+          <button onClick={handleCreateRoom}>Create Meeting</button>
+          <input
+            type="text"
+            value={inputRoomId}
+            onChange={(e) => setInputRoomId(e.target.value)}
+            placeholder="Enter Room ID"
+          />
+          <button onClick={() => joinRoom(inputRoomId)}>Join</button>
+        </div>
+      ) : (
+        <div>
+          <p>Meeting ID: {roomId}</p>
+
+          <video
+            ref={localRef}
+            autoPlay
+            muted
+            playsInline
+            style={{
+              width: "300px",
+              border: "2px solid green",
+              borderRadius: "8px",
+              background: "black",
+            }}
+          />
+
+          <video
+            ref={remoteRef}
+            autoPlay
+            playsInline
+            muted={false}
+            style={{
+              width: "600px",
+              height: "400px",
+              border: "4px solid red",
+              backgroundColor: "yellow",
+              borderRadius: "8px",
+            }}
+          />
+
+          <br />
+          <button onClick={leaveCall}>Leave</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default LiveSession;
