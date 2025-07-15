@@ -27,77 +27,59 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://skillswap-client-jm4y.onrender.com",
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-const rooms = {}; // { roomId: [socketId1, socketId2] }
-const users = {}; // { socketId: username }
 
 io.on("connection", (socket) => {
-  console.log("✅ Connected:", socket.id);
+  console.log("Connected:", socket.id);
 
-  socket.on("join-room", ({ roomId, username }) => {
-    console.log(`🚪 ${username} joined room: ${roomId}`);
-
-    socket.join(roomId);
-    socket.roomId = roomId;
-    users[socket.id] = username || "User";
-
-    if (!rooms[roomId]) rooms[roomId] = [];
-
-    rooms[roomId].forEach((id) => {
-      io.to(id).emit("user-joined", {
-        userId: socket.id,
-        username: users[socket.id],
-      });
-      socket.emit("user-joined", {
-        userId: id,
-        username: users[id],
-      });
-    });
-
-    rooms[roomId].push(socket.id);
-  });
-
-  socket.on("check-room", (roomId, callback) => {
+  socket.on("join-room", (roomId) => {
     const room = io.sockets.adapter.rooms.get(roomId);
-    callback(!!room && room.size > 0);
-  });
+    const numberOfClients = room ? room.size : 0;
 
-  socket.on("offer", ({ sdp, caller, target }) => {
-    io.to(target).emit("offer", { sdp, caller });
-  });
-
-  socket.on("answer", ({ sdp, responder, target }) => {
-    io.to(target).emit("answer", { sdp, responder });
-  });
-
-  socket.on("ice-candidate", ({ candidate, target }) => {
-    io.to(target).emit("ice-candidate", { candidate, from: socket.id });
-  });
-
-  socket.on("leave-room", ({ roomId, username }) => {
-    socket.leave(roomId);
-    socket.to(roomId).emit("user-left", { userId: socket.id, username });
-    if (rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
+    if (numberOfClients === 0) {
+      socket.join(roomId);
+      socket.emit("room-created");
+    } else if (numberOfClients === 1) {
+      socket.join(roomId);
+      socket.emit("room-joined");
+      socket.to(roomId).emit("peer-joined", socket.id);
+    } else {
+      socket.emit("room-full");
     }
+  });
+
+  socket.on("offer", (data) => {
+    socket.to(data.target).emit("offer", {
+      sdp: data.sdp,
+      caller: socket.id,
+    });
+  });
+
+  socket.on("answer", (data) => {
+    socket.to(data.target).emit("answer", {
+      sdp: data.sdp,
+      callee: socket.id,
+    });
+  });
+
+  socket.on("ice-candidate", (data) => {
+    socket.to(data.target).emit("ice-candidate", {
+      candidate: data.candidate,
+      from: socket.id,
+    });
   });
 
   socket.on("disconnect", () => {
-    const roomId = socket.roomId;
-    const username = users[socket.id] || "User";
-    if (roomId && rooms[roomId]) {
-      rooms[roomId] = rooms[roomId].filter((id) => id !== socket.id);
-      socket.to(roomId).emit("user-left", { userId: socket.id, username });
-      if (rooms[roomId].length === 0) delete rooms[roomId];
-    }
-    delete users[socket.id];
+    console.log("Disconnected:", socket.id);
+    socket.broadcast.emit("peer-disconnected", socket.id);
   });
 });
+
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
