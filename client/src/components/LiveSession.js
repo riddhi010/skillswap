@@ -20,35 +20,37 @@ const LiveSession = () => {
   const isOfferer = useRef(false);
   const iceQueue = useRef([]);
 
-  // Defer media setup until video element is mounted
- useEffect(() => {
-  if (inCall && roomId) {
-    const setupMediaAndJoin = async () => {
-      try {
-        console.log("🎥 Requesting media access...");
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+  // Expose for devtools debugging
+  window.remoteRef = remoteRef;
+  window.localRef = localRef;
 
-        if (localRef.current) {
-          localRef.current.srcObject = stream;
-          localStream.current = stream;
+  useEffect(() => {
+    if (inCall && roomId) {
+      const setupMediaAndJoin = async () => {
+        try {
+          console.log("🎥 Requesting media access...");
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
 
-          const videoTracks = stream.getVideoTracks();
-          console.log("📤 Sending video track:", videoTracks[0]);
-          console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
-          console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+          if (localRef.current) {
+            localRef.current.srcObject = stream;
+            localStream.current = stream;
+
+            const videoTracks = stream.getVideoTracks();
+            console.log("📤 Sending video track:", videoTracks[0]);
+            console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+            console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+          }
+        } catch (error) {
+          console.error("❌ Error accessing media:", error);
         }
-      } catch (error) {
-        console.error("❌ Error accessing media:", error);
-      }
-    };
+      };
 
-    setupMediaAndJoin(); // ✅ call once here
-  }
-}, [inCall, roomId]);
-
+      setupMediaAndJoin();
+    }
+  }, [inCall, roomId]);
 
   useEffect(() => {
     socket.on("user-joined", ({ userId }) => {
@@ -162,10 +164,25 @@ const LiveSession = () => {
           setTimeout(assignStreamToVideo, 50);
           return;
         }
+
         if (!video.srcObject) {
           video.srcObject = remoteMediaStream.current;
           console.log("✅ Remote stream assigned to video element");
         }
+
+        video.muted = false;
+
+        const tryPlay = () => {
+          video
+            .play()
+            .then(() => console.log("▶️ Remote video playing"))
+            .catch((err) => {
+              console.warn("⚠️ play() failed, retrying...", err.message);
+              setTimeout(tryPlay, 500);
+            });
+        };
+
+        tryPlay();
       };
 
       assignStreamToVideo();
@@ -189,42 +206,40 @@ const LiveSession = () => {
   };
 
   const joinRoom = async (id) => {
-  if (!id) {
-    alert("Please enter a meeting ID");
-    return;
-  }
-
-  setRoomId(id);
-  setInCall(true);
-
-  try {
-    console.log("🎥 Requesting media access...");
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-
-    if (localRef.current) {
-      localRef.current.srcObject = stream;
-      localStream.current = stream;
-
-      const videoTracks = stream.getVideoTracks();
-      console.log("📤 Sending video track:", videoTracks[0]);
-      console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
-      console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+    if (!id) {
+      alert("Please enter a meeting ID");
+      return;
     }
 
-    // ✅ Add the missing part:
-    socket.emit("check-room", id, (roomExists) => {
-      isOfferer.current = !roomExists;
-      console.log("📡 Room", id, "exists?", roomExists);
-      socket.emit("join-room", { roomId: id, username: "User" });
-    });
+    setRoomId(id);
+    setInCall(true);
 
-  } catch (error) {
-    console.error("❌ Error accessing media:", error);
-  }
-};
+    try {
+      console.log("🎥 Requesting media access...");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      });
+
+      if (localRef.current) {
+        localRef.current.srcObject = stream;
+        localStream.current = stream;
+
+        const videoTracks = stream.getVideoTracks();
+        console.log("📤 Sending video track:", videoTracks[0]);
+        console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+        console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+      }
+
+      socket.emit("check-room", id, (roomExists) => {
+        isOfferer.current = !roomExists;
+        console.log("📡 Room", id, "exists?", roomExists);
+        socket.emit("join-room", { roomId: id, username: "User" });
+      });
+    } catch (error) {
+      console.error("❌ Error accessing media:", error);
+    }
+  };
 
   const leaveCall = () => {
     socket.emit("leave-room", { roomId, username: "User" });
@@ -282,20 +297,19 @@ const LiveSession = () => {
           />
 
           <video
-  ref={remoteRef}
-  id="remoteVideo"
-  autoPlay
-  playsInline
-  controls
-  style={{
-    width: "600px",
-    height: "400px",
-    border: "4px solid red",
-    backgroundColor: "yellow",
-    borderRadius: "8px",
-  }}
-/>
-
+            ref={remoteRef}
+            autoPlay
+            playsInline
+            muted={false}
+            style={{
+              width: "600px",
+              height: "400px",
+              border: "4px solid red",
+              backgroundColor: "black",
+              borderRadius: "8px",
+              objectFit: "cover",
+            }}
+          />
 
           <br />
           <button onClick={leaveCall}>Leave</button>
