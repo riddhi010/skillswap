@@ -20,9 +20,13 @@ const LiveSession = () => {
   const isOfferer = useRef(false);
   const iceQueue = useRef([]);
 
+  // Expose for devtools debugging
+  window.remoteRef = remoteRef;
+  window.localRef = localRef;
+
   useEffect(() => {
     if (inCall && roomId) {
-      const setupMedia = async () => {
+      const setupMediaAndJoin = async () => {
         try {
           console.log("🎥 Requesting media access...");
           const stream = await navigator.mediaDevices.getUserMedia({
@@ -30,19 +34,21 @@ const LiveSession = () => {
             audio: true,
           });
 
-          localStream.current = stream;
           if (localRef.current) {
             localRef.current.srcObject = stream;
-          }
+            localStream.current = stream;
 
-          const videoTracks = stream.getVideoTracks();
-          console.log("📤 Sending video track:", videoTracks[0]);
+            const videoTracks = stream.getVideoTracks();
+            console.log("📤 Sending video track:", videoTracks[0]);
+            console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+            console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+          }
         } catch (error) {
           console.error("❌ Error accessing media:", error);
         }
       };
 
-      setupMedia();
+      setupMediaAndJoin();
     }
   }, [inCall, roomId]);
 
@@ -164,29 +170,29 @@ const LiveSession = () => {
           console.log("✅ Remote stream assigned to video element");
         }
 
-        video
-          .play()
-          .then(() => console.log("▶️ Remote video playing"))
-          .catch((err) => console.warn("⚠️ Error playing remote video:", err));
+        video.muted = false;
+
+        const tryPlay = () => {
+          video
+            .play()
+            .then(() => console.log("▶️ Remote video playing"))
+            .catch((err) => {
+              console.warn("⚠️ play() failed, retrying...", err.message);
+              setTimeout(tryPlay, 500);
+            });
+        };
+
+        tryPlay();
       };
 
       assignStreamToVideo();
     };
 
-    // Add local tracks
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => {
-        console.log("🎯 Adding track:", track.kind);
         peerRef.current.addTrack(track, localStream.current);
       });
     }
-
-    peerRef.current.oniceconnectionstatechange = () => {
-      console.log("🔄 ICE state:", peerRef.current.iceConnectionState);
-    };
-    peerRef.current.onconnectionstatechange = () => {
-      console.log("🟢 Connection state:", peerRef.current.connectionState);
-    };
   };
 
   const makeOffer = async (targetId) => {
@@ -215,9 +221,14 @@ const LiveSession = () => {
         audio: true,
       });
 
-      localStream.current = stream;
       if (localRef.current) {
         localRef.current.srcObject = stream;
+        localStream.current = stream;
+
+        const videoTracks = stream.getVideoTracks();
+        console.log("📤 Sending video track:", videoTracks[0]);
+        console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+        console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
       }
 
       socket.emit("check-room", id, (roomExists) => {
@@ -238,15 +249,12 @@ const LiveSession = () => {
   const endCall = () => {
     if (peerRef.current) peerRef.current.close();
     peerRef.current = null;
-
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => track.stop());
     }
-
     if (localRef.current) localRef.current.srcObject = null;
     if (remoteRef.current) remoteRef.current.srcObject = null;
-
-    remoteMediaStream.current = new MediaStream();
+    remoteMediaStream.current = new MediaStream(); // reset remote stream for next call
     setInCall(false);
     setRoomId("");
     setRemoteUserId(null);
@@ -297,8 +305,9 @@ const LiveSession = () => {
               width: "600px",
               height: "400px",
               border: "4px solid red",
-              backgroundColor: "yellow",
+              backgroundColor: "black",
               borderRadius: "8px",
+              objectFit: "cover",
             }}
           />
 
