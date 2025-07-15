@@ -188,14 +188,43 @@ const LiveSession = () => {
     });
   };
 
-  const joinRoom = (id) => {
-    if (!id) {
-      alert("Please enter a meeting ID");
-      return;
+  const joinRoom = async (id) => {
+  if (!id) {
+    alert("Please enter a meeting ID");
+    return;
+  }
+
+  setRoomId(id);
+  setInCall(true);
+
+  try {
+    console.log("🎥 Requesting media access...");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+
+    if (localRef.current) {
+      localRef.current.srcObject = stream;
+      localStream.current = stream;
+
+      const videoTracks = stream.getVideoTracks();
+      console.log("📤 Sending video track:", videoTracks[0]);
+      console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
+      console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
     }
-    setRoomId(id);
-    setInCall(true);
-  };
+
+    // ✅ Add the missing part:
+    socket.emit("check-room", id, (roomExists) => {
+      isOfferer.current = !roomExists;
+      console.log("📡 Room", id, "exists?", roomExists);
+      socket.emit("join-room", { roomId: id, username: "User" });
+    });
+
+  } catch (error) {
+    console.error("❌ Error accessing media:", error);
+  }
+};
 
   const leaveCall = () => {
     socket.emit("leave-room", { roomId, username: "User" });
