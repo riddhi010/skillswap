@@ -33,21 +33,27 @@ const LiveSession = () => {
           peerConnection.current.addTrack(track, mediaStream);
         });
 
-        peerConnection.current.ontrack = async (event) => {
-          console.log("🔁 ontrack fired");
-          if (event.streams && event.streams[0]) {
-            const remoteStream = event.streams[0];
-            if (remoteVideo.current) {
-              remoteVideo.current.srcObject = remoteStream;
-              try {
-                await remoteVideo.current.play();
-                console.log("✅ Remote video playing");
-              } catch (err) {
-                console.warn("⚠️ Remote video play failed:", err);
-              }
-            }
-          }
-        };
+       peerConnection.current.ontrack = async (event) => {
+  console.log("🔁 ontrack fired");
+
+  if (event.streams && event.streams[0]) {
+    const remoteStream = event.streams[0];
+
+    if (!remoteVideo.current.srcObject) {
+      remoteVideo.current.srcObject = remoteStream;
+
+      try {
+        await remoteVideo.current.play();
+        console.log("✅ Remote video playing");
+      } catch (err) {
+        console.warn("⚠️ Remote video play failed:", err);
+      }
+    } else {
+      console.log("⏩ Skipping duplicate remote stream assignment");
+    }
+  }
+};
+
 
         peerConnection.current.onicecandidate = (event) => {
           if (event.candidate && remoteSocketId) {
