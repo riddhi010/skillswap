@@ -1,318 +1,111 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("https://skillswap-backend-jxyu.onrender.com", {
-  transports: ["websocket"],
-});
-window.socket = socket;
+const socket = io("https://skillswap-backend-jxyu.onrender.com/"); 
 
 const LiveSession = () => {
+  const localVideo = useRef();
+  const remoteVideo = useRef();
+  const peerConnection = useRef();
   const [roomId, setRoomId] = useState("");
-  const [inputRoomId, setInputRoomId] = useState("");
   const [inCall, setInCall] = useState(false);
-  const [remoteUserId, setRemoteUserId] = useState(null);
 
-  const localRef = useRef(null);
-  const remoteRef = useRef(null);
-  const localStream = useRef(null);
-  const remoteMediaStream = useRef(new MediaStream());
-  const peerRef = useRef(null);
-  const isOfferer = useRef(false);
-  const iceQueue = useRef([]);
+  const config = {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" }
+    ],
+  };
 
-  // Expose for devtools debugging
-  window.remoteRef = remoteRef;
-  window.localRef = localRef;
+  const startCall = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    localVideo.current.srcObject = stream;
 
-  useEffect(() => {
-    if (inCall && roomId) {
-      const setupMediaAndJoin = async () => {
-        try {
-          console.log("🎥 Requesting media access...");
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true,
-          });
+    peerConnection.current = new RTCPeerConnection(config);
 
-          if (localRef.current) {
-            localRef.current.srcObject = stream;
-            localStream.current = stream;
-
-            const videoTracks = stream.getVideoTracks();
-            console.log("📤 Sending video track:", videoTracks[0]);
-            console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
-            console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
-          }
-        } catch (error) {
-          console.error("❌ Error accessing media:", error);
-        }
-      };
-
-      setupMediaAndJoin();
-    }
-  }, [inCall, roomId]);
-
-  useEffect(() => {
-    socket.on("user-joined", ({ userId }) => {
-      console.log("📥 User joined:", userId);
-      setRemoteUserId(userId);
-      if (isOfferer.current && !peerRef.current) {
-        createPeerConnection();
-        makeOffer(userId);
-      }
+    stream.getTracks().forEach(track => {
+      peerConnection.current.addTrack(track, stream);
     });
 
-    socket.on("offer", async ({ sdp, caller }) => {
-      console.log("📥 Received offer");
-      setRemoteUserId(caller);
-      createPeerConnection();
-      await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
-      console.log("✅ Remote description set from offer");
-
-      while (iceQueue.current.length) {
-        const candidate = iceQueue.current.shift();
-        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log("✅ ICE candidate added from queue");
-      }
-
-      const answer = await peerRef.current.createAnswer();
-      await peerRef.current.setLocalDescription(answer);
-      socket.emit("answer", {
-        sdp: answer,
-        responder: socket.id,
-        target: caller,
-      });
-    });
-
-    socket.on("answer", async ({ sdp }) => {
-      console.log("📥 Received answer");
-      if (peerRef.current.signalingState !== "stable") {
-        await peerRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
-        console.log("✅ Remote description set from answer");
-
-        while (iceQueue.current.length) {
-          const candidate = iceQueue.current.shift();
-          await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-          console.log("✅ ICE candidate added from queue");
-        }
-      }
-    });
-
-    socket.on("ice-candidate", async ({ candidate }) => {
-      console.log("📥 ICE candidate received");
-      if (peerRef.current && peerRef.current.remoteDescription) {
-        await peerRef.current.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log("✅ ICE candidate added immediately");
-      } else {
-        iceQueue.current.push(candidate);
-        console.log("⏳ ICE candidate queued");
-      }
-    });
-
-    socket.on("user-left", () => {
-      console.log("👋 User left");
-      endCall();
-    });
-
-    return () => {
-      socket.off("user-joined");
-      socket.off("offer");
-      socket.off("answer");
-      socket.off("ice-candidate");
-      socket.off("user-left");
+    peerConnection.current.ontrack = (event) => {
+      remoteVideo.current.srcObject = event.streams[0];
     };
-  }, [roomId]);
 
-  const createPeerConnection = () => {
-    peerRef.current = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        {
-          urls: "turn:openrelay.metered.ca:80",
-          username: "openrelayproject",
-          credential: "openrelayproject",
-        },
-      ],
-    });
-
-    peerRef.current.onicecandidate = (event) => {
-      if (event.candidate && remoteUserId) {
+    peerConnection.current.onicecandidate = (event) => {
+      if (event.candidate) {
         socket.emit("ice-candidate", {
+          target: remoteSocketId,
           candidate: event.candidate,
-          target: remoteUserId,
         });
       }
     };
 
-    peerRef.current.ontrack = (event) => {
-      console.log("🔵 Remote track received:", event.track.kind);
-
-      const stream = remoteMediaStream.current;
-      const alreadyExists = stream.getTracks().some(
-        (t) => t.id === event.track.id
-      );
-
-      if (!alreadyExists) {
-        stream.addTrack(event.track);
-        console.log("✅ Track added to remote stream");
-      }
-
-      const assignStreamToVideo = () => {
-        const video = remoteRef.current;
-        if (!video) {
-          console.warn("⏳ remoteRef not ready, retrying...");
-          setTimeout(assignStreamToVideo, 50);
-          return;
-        }
-
-        if (!video.srcObject) {
-          video.srcObject = remoteMediaStream.current;
-          console.log("✅ Remote stream assigned to video element");
-        }
-
-        video.muted = false;
-
-        const tryPlay = () => {
-          video
-            .play()
-            .then(() => console.log("▶️ Remote video playing"))
-            .catch((err) => {
-              console.warn("⚠️ play() failed, retrying...", err.message);
-              setTimeout(tryPlay, 500);
-            });
-        };
-
-        tryPlay();
-      };
-
-      assignStreamToVideo();
-    };
-
-    if (localStream.current) {
-      localStream.current.getTracks().forEach((track) => {
-        peerRef.current.addTrack(track, localStream.current);
-      });
-    }
-  };
-
-  const makeOffer = async (targetId) => {
-    const offer = await peerRef.current.createOffer();
-    await peerRef.current.setLocalDescription(offer);
-    socket.emit("offer", {
-      sdp: offer,
-      caller: socket.id,
-      target: targetId,
-    });
-  };
-
-  const joinRoom = async (id) => {
-    if (!id) {
-      alert("Please enter a meeting ID");
-      return;
-    }
-
-    setRoomId(id);
+    socket.emit("join-room", roomId);
     setInCall(true);
+  };
 
-    try {
-      console.log("🎥 Requesting media access...");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+  let remoteSocketId = "";
 
-      if (localRef.current) {
-        localRef.current.srcObject = stream;
-        localStream.current = stream;
+  useEffect(() => {
+    socket.on("room-created", () => {
+      console.log("Room created, waiting for peer...");
+    });
 
-        const videoTracks = stream.getVideoTracks();
-        console.log("📤 Sending video track:", videoTracks[0]);
-        console.log("📤 Video track enabled:", videoTracks[0]?.enabled);
-        console.log("📤 Video track readyState:", videoTracks[0]?.readyState);
+    socket.on("room-joined", () => {
+      console.log("Joined room, creating offer...");
+      createOffer();
+    });
+
+    socket.on("peer-joined", (id) => {
+      remoteSocketId = id;
+      console.log("Peer joined:", id);
+    });
+
+    socket.on("offer", async ({ sdp, caller }) => {
+      remoteSocketId = caller;
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await peerConnection.current.createAnswer();
+      await peerConnection.current.setLocalDescription(answer);
+      socket.emit("answer", { target: caller, sdp: answer });
+    });
+
+    socket.on("answer", async ({ sdp }) => {
+      await peerConnection.current.setRemoteDescription(new RTCSessionDescription(sdp));
+    });
+
+    socket.on("ice-candidate", async ({ candidate }) => {
+      try {
+        await peerConnection.current.addIceCandidate(candidate);
+      } catch (e) {
+        console.error("Error adding received ice candidate", e);
       }
+    });
 
-      socket.emit("check-room", id, (roomExists) => {
-        isOfferer.current = !roomExists;
-        console.log("📡 Room", id, "exists?", roomExists);
-        socket.emit("join-room", { roomId: id, username: "User" });
-      });
-    } catch (error) {
-      console.error("❌ Error accessing media:", error);
-    }
-  };
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
-  const leaveCall = () => {
-    socket.emit("leave-room", { roomId, username: "User" });
-    endCall();
-  };
-
-  const endCall = () => {
-    if (peerRef.current) peerRef.current.close();
-    peerRef.current = null;
-    if (localStream.current) {
-      localStream.current.getTracks().forEach((track) => track.stop());
-    }
-    if (localRef.current) localRef.current.srcObject = null;
-    if (remoteRef.current) remoteRef.current.srcObject = null;
-    remoteMediaStream.current = new MediaStream(); // reset remote stream for next call
-    setInCall(false);
-    setRoomId("");
-    setRemoteUserId(null);
-  };
-
-  const handleCreateRoom = () => {
-    const id = Math.random().toString(36).substring(2, 10);
-    console.log("🆕 Creating room with ID:", id);
-    joinRoom(id);
+  const createOffer = async () => {
+    const offer = await peerConnection.current.createOffer();
+    await peerConnection.current.setLocalDescription(offer);
+    socket.emit("offer", { target: remoteSocketId, sdp: offer });
   };
 
   return (
     <div>
       {!inCall ? (
-        <div>
-          <button onClick={handleCreateRoom}>Create Meeting</button>
+        <>
           <input
-            type="text"
-            value={inputRoomId}
-            onChange={(e) => setInputRoomId(e.target.value)}
             placeholder="Enter Room ID"
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
           />
-          <button onClick={() => joinRoom(inputRoomId)}>Join</button>
-        </div>
+          <button onClick={startCall}>Join Call</button>
+        </>
       ) : (
         <div>
-          <p>Meeting ID: {roomId}</p>
-
-          <video
-            ref={localRef}
-            autoPlay
-            muted
-            playsInline
-            style={{
-              width: "300px",
-              border: "2px solid green",
-              borderRadius: "8px",
-              background: "black",
-            }}
-          />
-
-          <video
-            ref={remoteRef}
-            autoPlay
-            playsInline
-            muted={false}
-            style={{
-              width: "600px",
-              height: "400px",
-              border: "4px solid red",
-              backgroundColor: "black",
-              borderRadius: "8px",
-              objectFit: "cover",
-            }}
-          />
-
-          <br />
-          <button onClick={leaveCall}>Leave</button>
+          <video ref={localVideo} autoPlay playsInline muted />
+          <video ref={remoteVideo} autoPlay playsInline />
         </div>
       )}
     </div>
