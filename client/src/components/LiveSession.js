@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-// ✅ Production signaling server
+// production backend URL
 const socket = io("https://skillswap-backend-jxyu.onrender.com", {
   transports: ["websocket"],
 });
@@ -64,12 +64,13 @@ const LiveSession = () => {
     });
 
     socket.on("room-joined", () => {
-      console.log("Peer joined. Creating offer...");
-      createOffer();
+      console.log("Room joined. Waiting for offer...");
     });
 
     socket.on("peer-joined", (id) => {
+      console.log("Peer joined:", id);
       setRemoteSocketId(id);
+      createOffer(id); // Only after we have the peer's socket ID
     });
 
     socket.on("offer", async ({ sdp, caller }) => {
@@ -101,10 +102,10 @@ const LiveSession = () => {
     };
   }, []);
 
-  const createOffer = async () => {
+  const createOffer = async (targetId) => {
     const offer = await peerConnection.current.createOffer();
     await peerConnection.current.setLocalDescription(offer);
-    socket.emit("offer", { target: remoteSocketId, sdp: offer });
+    socket.emit("offer", { target: targetId, sdp: offer });
   };
 
   const leaveCall = () => {
@@ -134,11 +135,24 @@ const LiveSession = () => {
         </div>
       ) : (
         <div>
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <video ref={localVideo} autoPlay playsInline muted style={{ width: 300 }} />
-            <video ref={remoteVideo} autoPlay playsInline style={{ width: 300 }} />
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+            <video
+              ref={localVideo}
+              autoPlay
+              playsInline
+              muted
+              style={{ width: 300, border: "2px solid black", borderRadius: "8px" }}
+            />
+            <video
+              ref={remoteVideo}
+              autoPlay
+              playsInline
+              style={{ width: 300, border: "2px solid black", borderRadius: "8px" }}
+            />
           </div>
-          <button onClick={leaveCall} style={{ marginTop: "10px" }}>Leave Call</button>
+          <button onClick={leaveCall} style={{ marginTop: "12px" }}>
+            Leave Call
+          </button>
         </div>
       )}
     </div>
