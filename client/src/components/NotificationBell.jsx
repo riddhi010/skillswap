@@ -3,7 +3,7 @@ import axios from "axios";
 import { Bell } from "lucide-react";          // npm install lucide-react
 import { Link } from "react-router-dom";
 
-const API_BASE = "http://localhost:5000";     // swap for prod
+const API_BASE = "https://skillswap-backend-jxyu.onrender.com";     
 
 const NotificationBell = () => {
   const [notifs, setNotifs] = useState([]);
