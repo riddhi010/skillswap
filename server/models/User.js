@@ -23,19 +23,8 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
-  points: {
-    type: Number,
-    default: 10, // Starting points
-  },
-  bio: {
-  type: String,
-  default: "",
-},
-social: {
-  linkedin: { type: String, default: "" },
-  github: { type: String, default: "" },
-  twitter: { type: String, default: "" },
-},
+  
+  avatar:     { type: String, default: "" },
 
 }, { timestamps: true });
 
