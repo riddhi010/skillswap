@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
-const socket = io("https://skillswap-backend-jxyu.onrender.com/"); 
+const socket = io("https://skillswap-backend-jxyu.onrender.com"); 
 
 const LiveSession = () => {
   const [roomId, setRoomId] = useState("");
@@ -178,41 +178,76 @@ const toggleCamera = () => {
 
 
   return (
-    <div>
-      {!inCall ? (
-        <div>
-          <button onClick={handleCreateRoom}>Create Meeting</button>
-          <input
-            type="text"
-            placeholder="Enter Meeting ID"
-            value={inputRoomId}
-            onChange={(e) => setInputRoomId(e.target.value)}
-          />
-          <button onClick={() => joinRoom(inputRoomId)}>Join Meeting</button>
-        </div>
-      ) : (
-        <div>
-          <p>Meeting ID: {roomId}</p>
-<div style={{ display: "flex", gap: "20px" }}>
-  <video ref={localRef} autoPlay muted playsInline style={{ width: "300px" }} />
-  <video ref={remoteRef} autoPlay playsInline style={{ width: "300px" }} />
-</div>
-<br />
-<button onClick={leaveCall} style={{ background: "red", color: "white" }}>
-  Leave Meeting
-</button>
-<button onClick={toggleMic}>
-  {isMicOn ? "Mute Mic" : "Unmute Mic"}
-</button>
-<button onClick={toggleCamera}>
-  {isCamOn ? "Turn Off Camera" : "Turn On Camera"}
-</button>
-
-
-
-        </div>
-      )}
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+  {!inCall ? (
+    <div className="bg-white p-6 rounded-xl shadow-lg space-y-4 w-full max-w-md text-center">
+      <h1 className="text-2xl font-bold text-indigo-600">Welcome to Live Session</h1>
+      <button
+        onClick={handleCreateRoom}
+        className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition"
+      >
+        Create New Meeting
+      </button>
+      <input
+        type="text"
+        placeholder="Enter Meeting ID"
+        value={inputRoomId}
+        onChange={(e) => setInputRoomId(e.target.value)}
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+      />
+      <button
+        onClick={() => joinRoom(inputRoomId)}
+        className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
+      >
+        Join Meeting
+      </button>
     </div>
+  ) : (
+    <div className="w-full max-w-5xl bg-white p-6 rounded-xl shadow-lg space-y-6">
+      <p className="text-lg text-center text-gray-700 font-semibold">
+        Meeting ID: <span className="text-indigo-500">{roomId}</span>
+      </p>
+
+      <div className="flex flex-col md:flex-row justify-center gap-4 items-center">
+        <video
+          ref={localRef}
+          autoPlay
+          muted
+          playsInline
+          className="rounded-lg border border-gray-300 w-full md:w-[45%]"
+        />
+        <video
+          ref={remoteRef}
+          autoPlay
+          playsInline
+          className="rounded-lg border border-gray-300 w-full md:w-[45%]"
+        />
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-4">
+        <button
+          onClick={leaveCall}
+          className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition"
+        >
+          Leave Meeting
+        </button>
+        <button
+          onClick={toggleMic}
+          className="bg-gray-700 text-white px-6 py-2 rounded-full hover:bg-gray-800 transition"
+        >
+          {isMicOn ? "Mute Mic 🎙️" : "Unmute Mic 🔇"}
+        </button>
+        <button
+          onClick={toggleCamera}
+          className="bg-gray-700 text-white px-6 py-2 rounded-full hover:bg-gray-800 transition"
+        >
+          {isCamOn ? "Turn Off Camera 🎥" : "Turn On Camera 🚫"}
+        </button>
+      </div>
+    </div>
+  )}
+</div>
+
   );
 };
 
