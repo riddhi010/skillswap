@@ -133,7 +133,7 @@ const Profile = () => {
     formData.avatar
       ? formData.avatar.startsWith("http")
         ? formData.avatar
-        : `http://localhost:5000${formData.avatar}`
+        : `https://skillswap-backend-jxyu.onrender.com${formData.avatar}`
       : "/default_avatar.png"
   }
   alt="avatar"
