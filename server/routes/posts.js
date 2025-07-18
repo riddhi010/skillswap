@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const Post = require("../models/post");
+const Post = require("../models/Post");
 const { protect } = require("../middleware/authMiddleware");
 
 // Create post
