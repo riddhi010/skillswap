@@ -1,4 +1,4 @@
-
+// ✅ Final, fully working LIVE SESSION system
 
 // ================== SERVER: index.js ==================
 const express = require("express");
@@ -7,6 +7,8 @@ const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const http = require("http");
 const { Server } = require("socket.io");
+const path = require("path");
+
 
 dotenv.config();
 connectDB();
@@ -27,6 +29,11 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/users", require("./routes/users"));
 const sessionRoutes = require("./routes/sessionRoutes");
 app.use("/api/sessions", sessionRoutes);
+app.use("/api/upload", require("./routes/upload"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const postsRoutes = require("./routes/posts");
+app.use("/api/posts", postsRoutes);
+
 
 
 const server = http.createServer(app);
