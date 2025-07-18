@@ -19,7 +19,11 @@ const Profile = () => {
     email: "",
     role: "",
     skills: "",
+    avatar: "",
   });
+
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -30,16 +34,17 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, {
+        const res = await axios.get(`http://localhost:5000/api/users/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const { name, email, role, skills } = res.data;
+        const { name, email, role, skills, avatar } = res.data;
         setFormData({
           name,
           email,
           role,
           skills: skills.join(", "),
+          avatar: avatar || "",
         });
       } catch (err) {
         setError("Failed to load profile.");
@@ -55,28 +60,54 @@ const Profile = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e) => {
+    const f = e.target.files[0];
+    if (f) {
+      setFile(f);
+      setPreview(URL.createObjectURL(f));
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError("");
     setMessage("");
 
+    let avatarUrl = formData.avatar;
+
     try {
       const token = localStorage.getItem("token");
+
+      // If file is selected, upload it first
+      if (file) {
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        const uploadRes = await axios.post("http://localhost:5000/api/upload", formData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        avatarUrl = uploadRes.data.url;
+      }
+
       const payload = {
         ...formData,
+        avatar: avatarUrl,
         skills: formData.skills.split(",").map((s) => s.trim()),
       };
 
-      const res = await axios.put(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, payload, {
+      const res = await axios.put(`http://localhost:5000/api/users/${userId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       setMessage("Profile updated successfully!");
       setFormData({
-        ...formData,
+        ...res.data,
         skills: res.data.skills.join(", "),
       });
+      setPreview("");
+      setFile(null);
       setEditing(false);
     } catch (err) {
       setError("Failed to update profile.");
@@ -96,6 +127,20 @@ const Profile = () => {
 
       {!editing ? (
         <div className="space-y-4">
+          <div className="flex justify-center mb-4">
+            <img
+  src={
+    formData.avatar
+      ? formData.avatar.startsWith("http")
+        ? formData.avatar
+        : `http://localhost:5000${formData.avatar}`
+      : "/default_avatar.png"
+  }
+  alt="avatar"
+  className="w-32 h-32 rounded-full object-cover border"
+/>
+
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-gray-500">Name</p>
@@ -125,6 +170,17 @@ const Profile = () => {
         </div>
       ) : (
         <form onSubmit={handleUpdate} className="space-y-4">
+          <div className="flex items-center gap-4">
+            <img
+              src={preview || formData.avatar || "/default_avatar.png"}
+              alt="preview"
+              className="w-20 h-20 rounded-full object-cover border"
+            />
+            <label className="cursor-pointer bg-gray-200 px-4 py-2 rounded">
+              Upload Photo
+              <input type="file" accept="image/*" hidden onChange={handleFileChange} />
+            </label>
+          </div>
           <div>
             <label className="block text-sm font-medium">Name</label>
             <input
