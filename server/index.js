@@ -1,4 +1,4 @@
-// ✅ Final, fully working LIVE SESSION system
+
 
 // ================== SERVER: index.js ==================
 const express = require("express");
@@ -59,10 +59,14 @@ io.on("connection", (socket) => {
     // Clean up on disconnect
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);
-      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-      if (rooms[roomId].length === 0) {
-        delete rooms[roomId];
-      }
+      if (rooms[roomId]) {
+  rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
+  
+  if (rooms[roomId].length === 0) {
+    delete rooms[roomId]; // clean up empty room
+  }
+}
+
     });
   });
 
