@@ -41,58 +41,20 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-100">
       {/* Navigation Bar */}
       <nav className="bg-white shadow-md px-6 py-4 flex items-center justify-between">
-  {/* Brand */}
-  <Link to="/" className="text-xl font-bold text-indigo-600">
-    SkillSwap
-  </Link>
-
-  {/* Right section with bell and menu */}
-  <div className="flex items-center gap-4">
-    {/* Always visible bell icon */}
+        <h2 className="text-xl font-bold text-indigo-600">SkillSwap</h2>
+        <div className="flex items-center space-x-6">
+          <div className="ml-auto flex items-center gap-4">
+    {/* maybe profile icon, etc. */}
     <NotificationBell />
-
-    {/* Hamburger menu (mobile only) */}
-    <button
-      onClick={() => setMenuOpen(!menuOpen)}
-      className="text-indigo-600 md:hidden"
-    >
-      {menuOpen ? <FaTimes size={22} /> : <FaBars size={22} />}
-    </button>
-
-    {/* Links (desktop only) */}
-    <div className="hidden md:flex items-center gap-6">
-      <Link to="/explore" className="navLink">Explore Users</Link>
-      <Link to="/live" className="navLink">Live Session</Link>
-      <Link to="/wall" className="navLink">Public Wall</Link>
-      <Link to="/profile" className="text-2xl text-gray-700 hover:text-indigo-600">
-        <FaUserCircle />
-      </Link>
-    </div>
   </div>
-</nav>
-
-{/* Mobile dropdown links (excluding bell) */}
-{menuOpen && (
-  <div className="bg-white md:hidden shadow px-6 py-4 space-y-4">
-    <Link onClick={() => setMenuOpen(false)} to="/explore" className="block navLink">
-      Explore Users
-    </Link>
-    <Link onClick={() => setMenuOpen(false)} to="/live" className="block navLink">
-      Live Session
-    </Link>
-    <Link onClick={() => setMenuOpen(false)} to="/wall" className="block navLink">
-      Public Wall
-    </Link>
-    <Link
-      onClick={() => setMenuOpen(false)}
-      to="/profile"
-      className="flex items-center gap-2 text-gray-700 hover:text-indigo-600"
-    >
-      <FaUserCircle className="text-2xl" /> Profile
-    </Link>
-  </div>
-)}
-
+          <Link to="/explore" className="text-gray-700 hover:text-indigo-600 font-medium">Explore Users</Link>
+          <Link to="/live" className="text-gray-700 hover:text-indigo-600 font-medium">Live Session</Link>
+          <Link to="/wall" className="text-gray-700 hover:text-indigo-600 font-medium">Public Wall</Link>
+          <Link to="/profile" className="text-gray-700 hover:text-indigo-600 text-2xl">
+            <FaUserCircle />
+          </Link>
+        </div>
+      </nav>
 
       {/* Dashboard Content */}
       <div className="p-6">
