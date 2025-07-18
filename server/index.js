@@ -33,6 +33,8 @@ app.use("/api/upload", require("./routes/upload"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const postsRoutes = require("./routes/posts");
 app.use("/api/posts", postsRoutes);
+const notificationRoutes = require("./routes/notificationRoutes");
+app.use("/api/notifications", notificationRoutes);
 
 
 
