@@ -3,6 +3,8 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { Link } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
+import MentorInbox from "./MentorInbox";
+import NotificationBell from "./NotificationBell.jsx";
 
 const Dashboard = () => {
   const [sessions, setSessions] = useState([]);
@@ -19,7 +21,7 @@ const Dashboard = () => {
 
   const fetchSessions = async (id) => {
     try {
-      const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/sessions/user/${id}`);
+      const res = await axios.get(`http://localhost:5000/api/sessions/user/${id}`);
       setSessions(res.data.sessions);
     } catch (err) {
       console.error("Error fetching sessions", err);
@@ -41,6 +43,10 @@ const Dashboard = () => {
       <nav className="bg-white shadow-md px-6 py-4 flex items-center justify-between">
         <h2 className="text-xl font-bold text-indigo-600">SkillSwap</h2>
         <div className="flex items-center space-x-6">
+          <div className="ml-auto flex items-center gap-4">
+    {/* maybe profile icon, etc. */}
+    <NotificationBell />
+  </div>
           <Link to="/explore" className="text-gray-700 hover:text-indigo-600 font-medium">Explore Users</Link>
           <Link to="/live" className="text-gray-700 hover:text-indigo-600 font-medium">Live Session</Link>
           <Link to="/wall" className="text-gray-700 hover:text-indigo-600 font-medium">Public Wall</Link>
@@ -53,7 +59,8 @@ const Dashboard = () => {
       {/* Dashboard Content */}
       <div className="p-6">
         <h1 className="text-2xl font-semibold mb-4 text-gray-800">Welcome to your Dashboard</h1>
-
+         <MentorInbox />
+      
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-green-700 mb-2">Upcoming Sessions</h2>
           {upcomingSessions.length === 0 ? (
