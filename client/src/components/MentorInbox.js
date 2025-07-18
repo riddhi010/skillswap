@@ -9,7 +9,7 @@ const MentorInbox = () => {
 
   const fetchInbox = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/sessions/inbox", {
+      const res = await axios.get("https://skillswap-backend-jxyu.onrender.com/api/sessions/inbox", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setRequests(res.data);
@@ -27,7 +27,7 @@ const MentorInbox = () => {
   const handleResponse = async (id, action) => {
   try {
     const res = await axios.put(
-      `http://localhost:5000/api/sessions/${id}`,
+      `https://skillswap-backend-jxyu.onrender.com/api/sessions/${id}`,
       { action },
       {
         headers: { Authorization: `Bearer ${token}` },
@@ -66,7 +66,7 @@ const MentorInbox = () => {
                     req.learner.avatar
                       ? req.learner.avatar.startsWith("http")
                         ? req.learner.avatar
-                        : `http://localhost:5000${req.learner.avatar}`
+                        : `https://skillswap-backend-jxyu.onrender.com${req.learner.avatar}`
                       : "/default_avatar.png"
                   }
                   alt="avatar"
