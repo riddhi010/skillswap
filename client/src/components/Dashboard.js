@@ -21,7 +21,7 @@ const Dashboard = () => {
 
   const fetchSessions = async (id) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/sessions/user/${id}`);
+      const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/sessions/user/${id}`);
       setSessions(res.data.sessions);
     } catch (err) {
       console.error("Error fetching sessions", err);
