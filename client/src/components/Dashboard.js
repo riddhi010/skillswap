@@ -19,7 +19,7 @@ const Dashboard = () => {
 
   const fetchSessions = async (id) => {
     try {
-      const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/sessions/user/${id}`);
+      const res = await axios.get(`http://localhost:5000/api/sessions/user/${id}`);
       setSessions(res.data.sessions);
     } catch (err) {
       console.error("Error fetching sessions", err);
@@ -43,6 +43,7 @@ const Dashboard = () => {
         <div className="flex items-center space-x-6">
           <Link to="/explore" className="text-gray-700 hover:text-indigo-600 font-medium">Explore Users</Link>
           <Link to="/live" className="text-gray-700 hover:text-indigo-600 font-medium">Live Session</Link>
+          <Link to="/wall" className="text-gray-700 hover:text-indigo-600 font-medium">Public Wall</Link>
           <Link to="/profile" className="text-gray-700 hover:text-indigo-600 text-2xl">
             <FaUserCircle />
           </Link>
