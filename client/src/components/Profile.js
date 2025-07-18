@@ -34,7 +34,7 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`http://localhost:5000/api/users/${userId}`, {
+        const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -84,7 +84,7 @@ const Profile = () => {
         const formData = new FormData();
         formData.append("avatar", file);
 
-        const uploadRes = await axios.post("http://localhost:5000/api/upload", formData, {
+        const uploadRes = await axios.post("https://skillswap-backend-jxyu.onrender.com/api/upload", formData, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -97,7 +97,7 @@ const Profile = () => {
         skills: formData.skills.split(",").map((s) => s.trim()),
       };
 
-      const res = await axios.put(`http://localhost:5000/api/users/${userId}`, payload, {
+      const res = await axios.put(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
