@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const API = "http://localhost:5000/api/posts";
-const API_BASE = "http://localhost:5000";
+const API = "https://skillswap-backend-jxyu.onrender.com/api/posts";
+const API_BASE = "https://skillswap-backend-jxyu.onrender.com";
 
 const getAvatar = (path) =>
   path
