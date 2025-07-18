@@ -8,6 +8,7 @@ import Profile from "./components/Profile";
 import LiveSession from "./components/LiveSession";
 import Home from "./pages/home";
 import Loader from './components/Loader';
+import PublicWall from './components/PublicWall.js';
 
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
         <Route path="/explore" element={<ExploreUsers />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/live" element={<LiveSession />} />
+        <Route path="/wall" element={<PublicWall />} />
         <Route path="/" element={<Home />} />
        
       </Routes>
