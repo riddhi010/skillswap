@@ -9,6 +9,7 @@ import LiveSession from "./components/LiveSession";
 import Home from "./pages/home";
 import Loader from './components/Loader';
 import PublicWall from './components/PublicWall.js';
+import ResourcesPage from "./pages/ResourcesPage";
 
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/live" element={<LiveSession />} />
         <Route path="/wall" element={<PublicWall />} />
+        <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/" element={<Home />} />
        
       </Routes>
