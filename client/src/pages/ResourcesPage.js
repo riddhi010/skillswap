@@ -8,14 +8,14 @@ const ResourcesPage = () => {
   const token = localStorage.getItem("token");
 
   const load = async () => {
-    const res = await axios.get(`http://localhost:5000/api/resources${filter ? "?title=" + filter : ""}`, {
+    const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/resources${filter ? "?title=" + filter : ""}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     setResources(res.data);
   };
 
   const handleDelete = async (id) => {
-    await axios.delete(`http://localhost:5000/api/resources/${id}`, {
+    await axios.delete(`https://skillswap-backend-jxyu.onrender.com/api/resources/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     load();
