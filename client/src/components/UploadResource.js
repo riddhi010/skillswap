@@ -14,7 +14,7 @@ const UploadResource = ({ onUploaded }) => {
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     if (file) fd.append("file", file);
 
-    await axios.post("http://localhost:5000/api/resources", fd, {
+    await axios.post("https://skillswap-backend-jxyu.onrender.com/api/resources", fd, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
