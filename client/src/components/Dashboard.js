@@ -63,6 +63,7 @@ const Dashboard = () => {
       <Link to="/explore" className="navLink">Explore Users</Link>
       <Link to="/live" className="navLink">Live Session</Link>
       <Link to="/wall" className="navLink">Public Wall</Link>
+      <Link to="/resources" className="navLink">Resource Hub</Link>
       <Link to="/profile" className="text-2xl text-gray-700 hover:text-indigo-600">
         <FaUserCircle />
       </Link>
@@ -81,6 +82,9 @@ const Dashboard = () => {
     </Link>
     <Link onClick={() => setMenuOpen(false)} to="/wall" className="block navLink">
       Public Wall
+    </Link>
+     <Link onClick={() => setMenuOpen(false)} to="/resources" className="block navLink">
+      Resource Hub
     </Link>
     <Link
       onClick={() => setMenuOpen(false)}
