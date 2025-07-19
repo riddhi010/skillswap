@@ -35,6 +35,7 @@ const postsRoutes = require("./routes/posts");
 app.use("/api/posts", postsRoutes);
 const notificationRoutes = require("./routes/notificationRoutes");
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/resources", require("./routes/resourceRoutes"));
 
 
 
