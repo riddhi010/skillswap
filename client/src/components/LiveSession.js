@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-const socket = io("http://localhost:5000"); // Update this in production
+const socket = io("https://skillswap-backend-jxyu.onrender.com"); // Update this in production
 
 const LiveSession = ({ presetRoom }) => {
   const [roomId, setRoomId] = useState("");
@@ -9,6 +11,10 @@ const LiveSession = ({ presetRoom }) => {
   const [inCall, setInCall] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCamOn, setIsCamOn] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [userName, setUserName] = useState("");
+
+
 
   const localRef = useRef(null);
   const remoteRef = useRef(null);
@@ -26,11 +32,15 @@ const LiveSession = ({ presetRoom }) => {
   }, [presetRoom]);
 
   useEffect(() => {
-    socket.on("user-joined", () => {
+    socket.on("user-joined", (name) => {
+      toast.info(`🔔 ${name} joined the meeting`);
       if (!peerRef.current) {
         callUser();
       }
     });
+    socket.on("user-left", (name) => {
+  toast.warn(`👋 ${name} left the meeting`);
+});
 
     socket.on("offer", handleOffer);
     socket.on("answer", handleAnswer);
@@ -58,7 +68,11 @@ const LiveSession = ({ presetRoom }) => {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localRef.current.srcObject = stream;
       localStream.current = stream;
-      socket.emit("join-room", id);
+      const name = prompt("Enter your name") || "Anonymous";
+      setUserName(name);
+      socket.emit("join-room", { roomId: id, name });
+
+
     } catch (err) {
       console.error("Error accessing media devices:", err);
     }
@@ -150,7 +164,8 @@ const LiveSession = ({ presetRoom }) => {
     if (localRef.current) localRef.current.srcObject = null;
     if (remoteRef.current) remoteRef.current.srcObject = null;
 
-    socket.emit("leave-room", roomId);
+    socket.emit("leave-room", { roomId, name: userName });
+
 
     // ✅ Clear meeting ID from localStorage
     localStorage.removeItem("meetingId");
@@ -168,6 +183,47 @@ const LiveSession = ({ presetRoom }) => {
       setIsMicOn((prev) => !prev);
     }
   };
+  
+  const shareScreen = async () => {
+  try {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    const screenTrack = screenStream.getVideoTracks()[0];
+
+    const sender = peerRef.current
+      .getSenders()
+      .find((s) => s.track.kind === 'video');
+
+    if (sender) {
+      sender.replaceTrack(screenTrack);
+    }
+
+    // 🔁 Replace local preview with the screen stream
+    if (localRef.current) {
+      localRef.current.srcObject = screenStream;
+    }
+
+    screenTrack.onended = () => {
+      // Replace with original camera stream
+      const videoTrack = localStream.current.getVideoTracks()[0];
+      if (sender && videoTrack) {
+        sender.replaceTrack(videoTrack);
+      }
+
+      // Reset local preview to camera
+      if (localRef.current) {
+        localRef.current.srcObject = localStream.current;
+      }
+
+      setIsScreenSharing(false);
+    };
+
+    setIsScreenSharing(true);
+  } catch (err) {
+    console.error("Error sharing screen:", err);
+  }
+};
+
+
 
   const toggleCamera = () => {
     if (localStream.current) {
@@ -180,6 +236,7 @@ const LiveSession = ({ presetRoom }) => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <ToastContainer position="top-center" autoClose={3000} />
       {!inCall ? (
         <div className="bg-white p-6 rounded-xl shadow-lg space-y-4 w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-indigo-600">Welcome to Live Session</h1>
@@ -226,6 +283,10 @@ const LiveSession = ({ presetRoom }) => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-4">
+            <button onClick={shareScreen} className="bg-purple-600 text-white px-6 py-2 rounded-full hover:bg-purple-700 transition">
+  Share Screen 🖥️
+</button>
+
             <button
               onClick={leaveCall}
               className="bg-red-600 text-white px-6 py-2 rounded-full hover:bg-red-700 transition"
