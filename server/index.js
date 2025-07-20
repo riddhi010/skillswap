@@ -48,13 +48,14 @@ const io = new Server(server, {
 });
 
 const rooms = {}; // { roomId: [socketId1, socketId2] }
-
+const users = {}; 
 
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
-  socket.on("join-room", (roomId) => {
+  socket.on("join-room", ({roomId,name}) => {
     socket.join(roomId);
+    users[socket.id] = { name, roomId };
     console.log(`${socket.id} joined room: ${roomId}`);
 
     if (!rooms[roomId]) {
@@ -64,23 +65,32 @@ io.on("connection", (socket) => {
     rooms[roomId].push(socket.id);
 
     // Notify others in the room (except the new user)
-    socket.to(roomId).emit("user-joined");
+    socket.to(roomId).emit("user-joined",name);
 
     // Clean up on disconnect
     socket.on("disconnect", () => {
-      console.log("Client disconnected:", socket.id);
-      if (rooms[roomId]) {
-  rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
-  
-  if (rooms[roomId].length === 0) {
-    delete rooms[roomId]; // clean up empty room
-  }
-}
+  console.log("Client disconnected:", socket.id);
 
-    });
+  const user = users[socket.id];
+  if (user) {
+    const { roomId, name } = user;
+
+    socket.to(roomId).emit("user-left", name);
+    delete users[socket.id];
+
+    if (rooms[roomId]) {
+      rooms[roomId] = rooms[roomId].filter(id => id !== socket.id);
+      if (rooms[roomId].length === 0) {
+        delete rooms[roomId];
+      }
+    }
+  }
+});
+
   });
 
-  socket.on("leave-room", (roomId) => {
+  socket.on("leave-room", ({roomId,name}) => {
+    socket.to(roomId).emit("user-left", name);
   console.log(`${socket.id} is leaving room ${roomId}`);
   socket.leave(roomId);
   rooms[roomId] = rooms[roomId]?.filter(id => id !== socket.id);
