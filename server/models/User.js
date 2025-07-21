@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema({
   },
   
   avatar:     { type: String, default: "" },
+  availability: [String],     // or use more complex structure if needed
+  linkedin: String,
 
 }, { timestamps: true });
 
