@@ -46,8 +46,9 @@ const ResourcesPage = () => {
       <h3 className="font-bold">{r.title}</h3>
       <p className="text-sm mb-2 text-gray-600">{r.description}</p>
       <p className="text-xs text-gray-400 mb-2">
-        By {r.uploader.name} • {new Date(r.createdAt).toLocaleString()}
-      </p>
+  By {r.uploader?.name || "Unknown"} • {new Date(r.createdAt).toLocaleString()}
+</p>
+
       <div className="space-x-2 mb-2">
         {r.fileUrl && (
             <a
@@ -68,7 +69,7 @@ const ResourcesPage = () => {
           </span>
         ))}
       </div>
-      {localStorage.getItem("userId") === r.uploader._id && (
+      {r.uploader && localStorage.getItem("userId") === r.uploader._id && (
         <button
           onClick={() => handleDelete(r._id)}
           className="text-red-600 text-sm mt-2 block"
