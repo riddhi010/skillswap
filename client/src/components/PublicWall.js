@@ -133,19 +133,20 @@ const PublicWall = () => {
 };
 
 const PostItem = ({ post, onLike, onAddComment }) => {
+  
   const [commentText, setCommentText] = useState("");
   const [showComments, setShowComments] = useState(false);
+  if (!post?.user) return null;
 
   return (
     <li className="bg-white/90 backdrop-blur-md border border-white/50 p-5 rounded-2xl shadow hover:shadow-lg transition">
       <div className="flex items-center gap-3 mb-2">
         <img
-          src={getAvatar(post.user.avatar)}
-          alt={post.user.name}
-          className="w-11 h-11 rounded-full object-cover border-2 border-indigo-200 shadow-sm"
-        />
+  src={getAvatar(post?.user?.avatar)}
+  alt={post?.user?.name || "User"}
+/>
         <div>
-          <p className="font-semibold">{post.user.name}</p>
+          <p className="font-semibold">{post?.user?.name || "Unknown User"}</p>
           <p className="text-xs text-gray-500">
             {new Date(post.createdAt).toLocaleString()}
           </p>
@@ -193,12 +194,11 @@ const PostItem = ({ post, onLike, onAddComment }) => {
             {post.comments.map((comment) => (
               <li key={comment._id} className="flex gap-2 items-start">
                 <img
-                  src={getAvatar(comment.user.avatar)}
-                  alt={comment.user.name}
-                  className="w-7 h-7 rounded-full object-cover border"
-                />
+  src={getAvatar(comment?.user?.avatar)}
+  alt={comment?.user?.name || "User"}
+/>
                 <div className="bg-gray-100 p-3 rounded-xl w-full shadow-sm">
-                  <p className="text-sm font-semibold">{comment.user.name}</p>
+                  <p className="text-sm font-semibold">{comment?.user?.name || "Unknown"}</p>
                   <p className="text-sm text-gray-700">{comment.content}</p>
                 </div>
               </li>
