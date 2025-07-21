@@ -20,6 +20,8 @@ const Profile = () => {
     role: "",
     skills: "",
     avatar: "",
+    availability: [],     // 👈 Array of objects: { day, time }
+    linkedin: "", 
   });
 
   const [file, setFile] = useState(null);
@@ -38,13 +40,15 @@ const Profile = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const { name, email, role, skills, avatar } = res.data;
+        const { name, email, role, skills, avatar, availability, linkedin } = res.data;
         setFormData({
           name,
           email,
           role,
           skills: skills.join(", "),
           avatar: avatar || "",
+          availability: availability || [],
+          linkedin: linkedin || "",
         });
       } catch (err) {
         setError("Failed to load profile.");
@@ -158,6 +162,30 @@ const Profile = () => {
               <p className="text-gray-500">Skills</p>
               <p className="text-lg font-medium">{formData.skills}</p>
             </div>
+            <div>
+              <p className="text-gray-500">Availability</p>
+              <p className="text-lg font-medium">
+              {formData.availability.length > 0 ? formData.availability.join(", ") : "Not specified"}
+              </p>
+            </div>
+            <div>
+    <p className="text-gray-500">LinkedIn</p>
+    <p className="text-lg font-medium">
+      {formData.linkedin ? (
+        <a href={formData.linkedin} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+          {formData.linkedin}
+        </a>
+      ) : (
+        "Not provided"
+      )}
+    </p>
+  </div>
+            <div>
+
+  
+</div>
+
+
           </div>
           <div className="text-center mt-6">
             <button
@@ -222,6 +250,35 @@ const Profile = () => {
               className="w-full mt-1 px-3 py-2 border rounded"
             />
           </div>
+          <div>
+  <label className="block text-sm font-medium">Availability (e.g. Monday 10AM, Friday 5PM)</label>
+  <input
+    name="availability"
+    value={formData.availability.join(", ")}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        availability: e.target.value.split(",").map((s) => s.trim()),
+      })
+    }
+    className="w-full mt-1 px-3 py-2 border rounded"
+    placeholder="e.g. 22/07/2025 , Monday 10AM"
+  />
+</div>
+
+
+<div>
+  <label className="block text-sm font-medium">LinkedIn URL</label>
+  <input
+    name="linkedin"
+    value={formData.linkedin}
+    onChange={handleChange}
+    className="w-full mt-1 px-3 py-2 border rounded"
+    placeholder="https://linkedin.com/in/your-profile"
+  />
+</div>
+
+
           <div className="flex justify-between mt-4">
             <button
               type="button"
