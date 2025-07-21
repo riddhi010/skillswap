@@ -9,7 +9,7 @@ const getAvatar = (path) =>
     ? path.startsWith("http")
       ? path
       : `${API_BASE}${path.startsWith("/") ? path : "/" + path}`
-    : "/default_avatar.png";
+    : "https://ui-avatars.com/api/?name=User&background=ddd&color=555";
 
 const PublicWall = () => {
   const [posts, setPosts] = useState([]);
