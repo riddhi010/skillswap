@@ -106,7 +106,7 @@ const Register = () => {
                 name="role"
                 onChange={handleChange}
                 value={formData.role}
-                className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 border border-white border-opacity-30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 border border-white border-opacity-30 text-black focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
                 <option value="learner">👩‍🎓 Learner</option>
                 <option value="mentor">🧑‍🏫 Mentor</option>
