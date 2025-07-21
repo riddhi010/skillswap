@@ -141,9 +141,10 @@ const PostItem = ({ post, onLike, onAddComment }) => {
   return (
     <li className="bg-white/90 backdrop-blur-md border border-white/50 p-5 rounded-2xl shadow hover:shadow-lg transition">
       <div className="flex items-center gap-3 mb-2">
-        <img
+<img
   src={getAvatar(post?.user?.avatar)}
   alt={post?.user?.name || "User"}
+  className="w-11 h-11 rounded-full object-cover border-2 border-indigo-200 shadow-sm"
 />
         <div>
           <p className="font-semibold">{post?.user?.name || "Unknown User"}</p>
@@ -196,7 +197,9 @@ const PostItem = ({ post, onLike, onAddComment }) => {
                 <img
   src={getAvatar(comment?.user?.avatar)}
   alt={comment?.user?.name || "User"}
+  className="w-7 h-7 rounded-full object-cover border"
 />
+
                 <div className="bg-gray-100 p-3 rounded-xl w-full shadow-sm">
                   <p className="text-sm font-semibold">{comment?.user?.name || "Unknown"}</p>
                   <p className="text-sm text-gray-700">{comment.content}</p>
