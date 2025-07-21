@@ -132,6 +132,26 @@ const ExploreUsers = () => {
                   <p className="text-sm text-gray-600 capitalize">
                     Role: {u.role}
                   </p>
+                  <p className="text-sm text-gray-600 capitalize">
+                  Availability: {u.availability?.length > 0 ? u.availability.join(", ") : "Not specified"}
+                  </p>
+
+                  <p className="text-sm text-gray-600 capitalize">
+  LinkedIn:{" "}
+  {u.linkedin ? (
+    <a
+      href={u.linkedin}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 underline"
+    >
+      {u.linkedin}
+    </a>
+  ) : (
+    "Not provided"
+  )}
+</p>
+
                 </div>
               </div>
 
