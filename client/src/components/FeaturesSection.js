@@ -27,11 +27,7 @@ const features = [
     desc: "Let AI pair you with mentors or study buddies based on your interests, skills, and goals — it’s like matchmaking for knowledge.",
     color: "bg-gradient-to-r from-indigo-500 to-purple-500",
   },
-  {
-    title: "👥 AI Project Partner Match",
-    desc: "Working on a project? Find your ideal coding partner or teammate based on experience, learning style, and tech stack.",
-    color: "bg-gradient-to-r from-fuchsia-500 to-pink-500",
-  },
+ 
 ];
 
 const FeaturesSection = () => {
