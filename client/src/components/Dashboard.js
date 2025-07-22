@@ -9,7 +9,7 @@ import NotificationBell from "./NotificationBell";
 const Dashboard = () => {
   const [sessions, setSessions] = useState([]);
   const [userId, setUserId]   = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);          // ⬅ mobile state
+  const [menuOpen, setMenuOpen] = useState(false);          
 
   /* ───────── data fetch ───────── */
   useEffect(() => {
