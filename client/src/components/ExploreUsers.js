@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
+// API Endpoints
 const API_BASE = "https://skillswap-backend-jxyu.onrender.com";
-const USERS_API  = `${API_BASE}/api/users`;
-const SESS_API   = `${API_BASE}/api/sessions`;
+const USERS_API = `${API_BASE}/api/users`;
+const SESS_API = `${API_BASE}/api/sessions`;
 
-/* helper → convert /uploads/… to full URL */
+// Helper function to format avatar path
 const getAvatar = (path) =>
   path
     ? path.startsWith("http")
@@ -14,27 +15,31 @@ const getAvatar = (path) =>
     : "/default_avatar.png";
 
 const ExploreUsers = () => {
-  const [users, setUsers]           = useState([]);
-  const [role, setRole]             = useState("");
-  const [skill, setSkill]           = useState("");
-  const [page, setPage]             = useState(1);
+  // States for users and filters
+  const [users, setUsers] = useState([]);
+  const [role, setRole] = useState("");
+  const [skill, setSkill] = useState("");
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  /* modal + session state */
-  const [showModal, setShowModal]         = useState(false);
-  const [selectedUser, setSelectedUser]   = useState(null);
-  const [sessionData, setSessionData]     = useState({
-    skill: "", message: "", date: ""
+  // States for modal and session request
+  const [showModal, setShowModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [sessionData, setSessionData] = useState({
+    skill: "",
+    message: "",
+    date: "",
   });
 
   const token = localStorage.getItem("token");
 
-  /* fetch users whenever filters / page change */
+  // Fetch users when filters or page changes
   useEffect(() => {
     const fetchUsers = async () => {
-      setLoading(true); setError("");
+      setLoading(true);
+      setError("");
       try {
         const { data } = await axios.get(USERS_API, {
           params: { role, skill, page, limit: 5 },
@@ -47,17 +52,18 @@ const ExploreUsers = () => {
         setLoading(false);
       }
     };
+
     fetchUsers();
   }, [role, skill, page]);
 
-  /* open modal */
+  // Handle session request modal
   const handleRequestSession = (user) => {
     setSelectedUser(user);
     setSessionData({ skill: "", message: "", date: "" });
     setShowModal(true);
   };
 
-  /* send session request */
+  // Submit session request
   const submitRequest = async () => {
     try {
       await axios.post(
@@ -78,7 +84,6 @@ const ExploreUsers = () => {
     }
   };
 
-  /* ---------------- UI ---------------- */
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h2 className="text-2xl font-bold mb-4 text-center">🔍 Explore Users</h2>
@@ -105,7 +110,7 @@ const ExploreUsers = () => {
         />
       </div>
 
-      {/* Users List */}
+      {/* User List */}
       {loading ? (
         <p className="text-center text-gray-500">Loading…</p>
       ) : error ? (
@@ -133,25 +138,26 @@ const ExploreUsers = () => {
                     Role: {u.role}
                   </p>
                   <p className="text-sm text-gray-600 capitalize">
-                  Availability: {u.availability?.length > 0 ? u.availability.join(", ") : "Not specified"}
+                    Availability:{" "}
+                    {u.availability?.length > 0
+                      ? u.availability.join(", ")
+                      : "Not specified"}
                   </p>
-
                   <p className="text-sm text-gray-600 capitalize">
-  LinkedIn:{" "}
-  {u.linkedin ? (
-    <a
-      href={u.linkedin}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-blue-600 underline"
-    >
-      {u.linkedin}
-    </a>
-  ) : (
-    "Not provided"
-  )}
-</p>
-
+                    LinkedIn:{" "}
+                    {u.linkedin ? (
+                      <a
+                        href={u.linkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        {u.linkedin}
+                      </a>
+                    ) : (
+                      "Not provided"
+                    )}
+                  </p>
                 </div>
               </div>
 
@@ -202,7 +208,7 @@ const ExploreUsers = () => {
         </button>
       </div>
 
-      {/* Session Request Modal */}
+      {/* Modal for Session Request */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
