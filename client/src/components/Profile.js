@@ -20,8 +20,8 @@ const Profile = () => {
     role: "",
     skills: "",
     avatar: "",
-    availability: [],     // 👈 Array of objects: { day, time }
-    linkedin: "", 
+    availability: [], // 👈 Array of objects: { day, time }
+    linkedin: "",
   });
 
   const [file, setFile] = useState(null);
@@ -36,11 +36,15 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          `https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-        const { name, email, role, skills, avatar, availability, linkedin } = res.data;
+        const { name, email, role, skills, avatar, availability, linkedin } =
+          res.data;
         setFormData({
           name,
           email,
@@ -83,14 +87,17 @@ const Profile = () => {
     try {
       const token = localStorage.getItem("token");
 
-      // If file is selected, upload it first
       if (file) {
-        const formData = new FormData();
-        formData.append("avatar", file);
+        const formDataUpload = new FormData();
+        formDataUpload.append("avatar", file);
 
-        const uploadRes = await axios.post("https://skillswap-backend-jxyu.onrender.com/api/upload", formData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const uploadRes = await axios.post(
+          "https://skillswap-backend-jxyu.onrender.com/api/upload",
+          formDataUpload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
         avatarUrl = uploadRes.data.url;
       }
@@ -101,9 +108,13 @@ const Profile = () => {
         skills: formData.skills.split(",").map((s) => s.trim()),
       };
 
-      const res = await axios.put(`https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.put(
+        `https://skillswap-backend-jxyu.onrender.com/api/users/${userId}`,
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       setMessage("Profile updated successfully!");
       setFormData({
@@ -133,18 +144,18 @@ const Profile = () => {
         <div className="space-y-4">
           <div className="flex justify-center mb-4">
             <img
-  src={
-    formData.avatar
-      ? formData.avatar.startsWith("http")
-        ? formData.avatar
-        : `https://skillswap-backend-jxyu.onrender.com${formData.avatar}`
-      : "/default_avatar.png"
-  }
-  alt="avatar"
-  className="w-32 h-32 rounded-full object-cover border"
-/>
-
+              src={
+                formData.avatar
+                  ? formData.avatar.startsWith("http")
+                    ? formData.avatar
+                    : `https://skillswap-backend-jxyu.onrender.com${formData.avatar}`
+                  : "/default_avatar.png"
+              }
+              alt="avatar"
+              className="w-32 h-32 rounded-full object-cover border"
+            />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-gray-500">Name</p>
@@ -165,28 +176,30 @@ const Profile = () => {
             <div>
               <p className="text-gray-500">Availability</p>
               <p className="text-lg font-medium">
-              {formData.availability.length > 0 ? formData.availability.join(", ") : "Not specified"}
+                {formData.availability.length > 0
+                  ? formData.availability.join(", ")
+                  : "Not specified"}
               </p>
             </div>
             <div>
-    <p className="text-gray-500">LinkedIn</p>
-    <p className="text-lg font-medium">
-      {formData.linkedin ? (
-        <a href={formData.linkedin} target="_blank" rel="noreferrer" className="text-blue-600 underline">
-          {formData.linkedin}
-        </a>
-      ) : (
-        "Not provided"
-      )}
-    </p>
-  </div>
-            <div>
-
-  
-</div>
-
-
+              <p className="text-gray-500">LinkedIn</p>
+              <p className="text-lg font-medium">
+                {formData.linkedin ? (
+                  <a
+                    href={formData.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-600 underline"
+                  >
+                    {formData.linkedin}
+                  </a>
+                ) : (
+                  "Not provided"
+                )}
+              </p>
+            </div>
           </div>
+
           <div className="text-center mt-6">
             <button
               onClick={() => setEditing(true)}
@@ -206,9 +219,15 @@ const Profile = () => {
             />
             <label className="cursor-pointer bg-gray-200 px-4 py-2 rounded">
               Upload Photo
-              <input type="file" accept="image/*" hidden onChange={handleFileChange} />
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleFileChange}
+              />
             </label>
           </div>
+
           <div>
             <label className="block text-sm font-medium">Name</label>
             <input
@@ -219,6 +238,7 @@ const Profile = () => {
               required
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium">Email</label>
             <input
@@ -228,6 +248,7 @@ const Profile = () => {
               className="w-full mt-1 px-3 py-2 border bg-gray-100 rounded"
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium">Role</label>
             <select
@@ -241,6 +262,7 @@ const Profile = () => {
               <option value="both">Both</option>
             </select>
           </div>
+
           <div>
             <label className="block text-sm font-medium">Skills</label>
             <input
@@ -250,34 +272,37 @@ const Profile = () => {
               className="w-full mt-1 px-3 py-2 border rounded"
             />
           </div>
+
           <div>
-  <label className="block text-sm font-medium">Availability (e.g. Monday 10AM, Friday 5PM)</label>
-  <input
-    name="availability"
-    value={formData.availability.join(", ")}
-    onChange={(e) =>
-      setFormData({
-        ...formData,
-        availability: e.target.value.split(",").map((s) => s.trim()),
-      })
-    }
-    className="w-full mt-1 px-3 py-2 border rounded"
-    placeholder="e.g. 22/07/2025 , Monday 10AM"
-  />
-</div>
+            <label className="block text-sm font-medium">
+              Availability (e.g. Monday 10AM, Friday 5PM)
+            </label>
+            <input
+              name="availability"
+              value={formData.availability.join(", ")}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  availability: e.target.value
+                    .split(",")
+                    .map((s) => s.trim()),
+                })
+              }
+              className="w-full mt-1 px-3 py-2 border rounded"
+              placeholder="e.g. 22/07/2025 , Monday 10AM"
+            />
+          </div>
 
-
-<div>
-  <label className="block text-sm font-medium">LinkedIn URL</label>
-  <input
-    name="linkedin"
-    value={formData.linkedin}
-    onChange={handleChange}
-    className="w-full mt-1 px-3 py-2 border rounded"
-    placeholder="https://linkedin.com/in/your-profile"
-  />
-</div>
-
+          <div>
+            <label className="block text-sm font-medium">LinkedIn URL</label>
+            <input
+              name="linkedin"
+              value={formData.linkedin}
+              onChange={handleChange}
+              className="w-full mt-1 px-3 py-2 border rounded"
+              placeholder="https://linkedin.com/in/your-profile"
+            />
+          </div>
 
           <div className="flex justify-between mt-4">
             <button
