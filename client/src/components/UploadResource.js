@@ -62,7 +62,9 @@ const UploadResource = ({ onUploaded }) => {
                 className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring focus:ring-indigo-300"
                 placeholder="Enter title"
                 value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}  
+                //...form: Copies the existing values (description, tags, etc.)
+               //title: e.target.value: Updates only the title field.
                 required
               />
             </div>
