@@ -12,7 +12,7 @@ const UploadResource = ({ onUploaded }) => {
     e.preventDefault();
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-    if (file) fd.append("file", file);
+    if (file) fd.append("file", file); // Because file is not part of the form object — it's a separate state variable.
 
     await axios.post("https://skillswap-backend-jxyu.onrender.com/api/resources", fd, {
       headers: { Authorization: `Bearer ${token}` },
