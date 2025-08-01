@@ -11,3 +11,31 @@
 **SkillSwap** is a collaborative platform where users can explore mentors or learners based on skills, request live mentoring sessions, and interact through a public wall. It integrates **WebRTC-based live video sessions**, **real-time session requests**, and a **centralized Resource Hub** to enable efficient peer-to-peer learning.
 
 ---
+
+## 🚀 Key Features
+
+### 🧑‍💻 Live Skill-Sharing Sessions
+- 1-on-1 Mentoring with WebRTC
+- Screen Sharing Support
+- Real-time Video & Audio Communication
+- Session scheduling and management via dashboards
+
+### 📩 Session Management
+- Explore users by role/skill
+- Send session requests with skill/topic
+- Accept/Reject workflows
+- Track upcoming & completed sessions
+
+### 🔔 Real-Time Notifications
+- Socket.io-based updates for:
+  - Session requests
+  - Status changes
+  - New public posts & comments
+
+### 📢 Public Wall (Social Feed)
+- Create posts
+- Like and comment
+- Promote skill offerings or learning achievements
+
+### 📚 Resource Hub (with Cloudinary)
+- Upload and download study materials
