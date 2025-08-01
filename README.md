@@ -61,3 +61,16 @@
 - Render for client hosting
 
 ---
+
+## 📦 Setup & Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/riddhi010/skillswap.git
+cd skillswap
+
+# 2. Install Backend Dependencies
+cd server
+npm install
+
+# 3. Create a .env file in the /server directory and add the following:
