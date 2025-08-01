@@ -39,3 +39,25 @@
 
 ### 📚 Resource Hub (with Cloudinary)
 - Upload and download study materials
+
+### 📌 Frontend
+- React.js 
+- Tailwind CSS
+- Framer Motion
+- Axios, React Icons
+
+### 📌 Backend
+- Node.js, Express.js
+- MongoDB
+- JWT Authentication
+
+### 📡 Real-Time / Video
+- WebRTC for peer-to-peer video mentoring
+- Socket.io for notifications and session events
+
+### ☁️ External Integrations
+- Cloudinary for file uploads
+- MongoDB Atlas for cloud database
+- Render for client hosting
+
+---
