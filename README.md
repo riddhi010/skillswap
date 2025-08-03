@@ -92,8 +92,10 @@ npm install
 npm start
 
 # 7. Open your browser and navigate to:
-# Frontend: http://localhost:3000
-# Backend:  http://localhost:5000
+ Frontend: http://localhost:3000
+ Backend:  http://localhost:5000
+
+---
 
 👩‍💻 Author
 Riddhi Shah 
