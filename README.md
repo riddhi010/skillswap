@@ -81,3 +81,19 @@ npm install
    -CLOUDINARY_API_KEY=your_api_key
    -CLOUDINARY_API_SECRET=your_api_secret 
 
+# 4. Start the Backend Server
+npm start
+
+# 5. In a new terminal, install Frontend Dependencies
+cd ../client
+npm install
+
+# 6. Start the React Frontend
+npm start
+
+# 7. Open your browser and navigate to:
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:5000
+
+👩‍💻 Author
+Riddhi Shah 
