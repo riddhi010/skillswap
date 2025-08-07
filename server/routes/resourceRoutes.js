@@ -8,7 +8,7 @@ const upload   = multer({ storage });
 const Resource = require("../models/Resource");
 const { protect } = require("../middleware/authMiddleware");
 
-/* ───────── Upload ───────── */
+/* Upload  */
 router.post("/", protect, upload.single("file"), async (req, res) => {
   try {
     const { title, description, tags } = req.body;
@@ -29,7 +29,7 @@ router.post("/", protect, upload.single("file"), async (req, res) => {
   }
 });
 
-/* ───────── Query list (with tag search) ───────── */
+/* Query list (with tag search)  */
 router.get("/", protect, async (req, res) => {
   const { tag, title } = req.query;
 
@@ -51,7 +51,7 @@ router.get("/", protect, async (req, res) => {
 });
 
 
-/* ───────── Delete (owner only) ───────── */
+/*  Delete (owner only)  */
 router.delete("/:id", protect, async (req, res) => {
   const resource = await Resource.findById(req.params.id);
   if (!resource) return res.status(404).send("Not found");
@@ -65,3 +65,4 @@ router.delete("/:id", protect, async (req, res) => {
 });
 
 module.exports = router;
+
