@@ -20,7 +20,7 @@ const Profile = () => {
     role: "",
     skills: "",
     avatar: "",
-    availability: [], // 👈 Array of objects: { day, time }
+    availability: [], 
     linkedin: "",
   });
 
