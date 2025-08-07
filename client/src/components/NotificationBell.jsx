@@ -29,7 +29,7 @@ const NotificationBell = () => {
     return () => clearInterval(id);
   }, []);
 
-  // close dropdown on outside click
+  
   useEffect(() => {
     const handler = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -38,7 +38,7 @@ const NotificationBell = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // delete helper
+  
   const deleteNotif = async (id) => {
     try {
       await axios.delete(`${API_BASE}/api/notifications/${id}`, {
@@ -96,3 +96,4 @@ const NotificationBell = () => {
 };
 
 export default NotificationBell;
+
