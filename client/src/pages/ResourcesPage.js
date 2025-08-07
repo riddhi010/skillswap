@@ -38,7 +38,7 @@ const ResourcesPage = () => {
         onChange={(e) => setFilter(e.target.value.trim())}
       />
 
-      {/* List */}
+      
       {/* List */}
 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
   {resources.map((r) => (
@@ -86,3 +86,4 @@ const ResourcesPage = () => {
 };
 
 export default ResourcesPage;
+
