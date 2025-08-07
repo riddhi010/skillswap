@@ -1,6 +1,3 @@
-// ✅ Final, fully working LIVE SESSION system
-
-// ================== SERVER: index.js ==================
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -47,7 +44,7 @@ const io = new Server(server, {
   },
 });
 
-const rooms = {}; // { roomId: [socketId1, socketId2] }
+const rooms = {}; 
 const users = {}; 
 
 io.on("connection", (socket) => {
