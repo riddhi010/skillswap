@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { motion } from "framer-motion";
-import "../pages/styles.css"; // make sure this contains relevant embla CSS
+import "../pages/styles.css"; 
 
-// ✅ Testimonials data
+// Testimonials data
 const testimonials = [
   {
     name: "Arjun R.",
@@ -118,3 +118,4 @@ const TestimonialsCarousel = () => {
 };
 
 export default TestimonialsCarousel;
+
