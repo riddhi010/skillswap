@@ -34,14 +34,14 @@ const MentorInbox = () => {
       }
     );
 
-    // Optional: Show alert or toast to mentor
+    
     if (action === "accept" && res.data.meetingId) {
       alert(`Session accepted ✅\nMeeting link: /live/${res.data.meetingId}`);
     } else if (action === "reject") {
       alert("Session rejected ❌");
     }
 
-    fetchInbox(); // Refresh the session requests list
+    fetchInbox(); 
   } catch (err) {
     console.error("Failed to update session");
     alert("Something went wrong while responding to the request.");
@@ -104,3 +104,4 @@ const MentorInbox = () => {
 };
 
 export default MentorInbox;
+
