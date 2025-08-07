@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const socket = io("https://skillswap-backend-jxyu.onrender.com"); // Update this in production
+const socket = io("https://skillswap-backend-jxyu.onrender.com"); 
 
 const LiveSession = ({ presetRoom }) => {
   const [roomId, setRoomId] = useState("");
@@ -21,7 +21,7 @@ const LiveSession = ({ presetRoom }) => {
   const localStream = useRef(null);
   const peerRef = useRef(null);
 
-  // ✅ Auto-join if presetRoom or saved roomId exists
+  // Auto-join if presetRoom or saved roomId exists
   useEffect(() => {
     const savedRoom = localStorage.getItem("meetingId");
     if (presetRoom) {
@@ -62,7 +62,7 @@ const LiveSession = ({ presetRoom }) => {
   const joinRoom = async (id) => {
     setRoomId(id);
     setInCall(true);
-    localStorage.setItem("meetingId", id); // ✅ persist for refresh
+    localStorage.setItem("meetingId", id); 
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -167,7 +167,7 @@ const LiveSession = ({ presetRoom }) => {
     socket.emit("leave-room", { roomId, name: userName });
 
 
-    // ✅ Clear meeting ID from localStorage
+    // Clear meeting ID from localStorage
     localStorage.removeItem("meetingId");
 
     setRoomId("");
@@ -197,19 +197,19 @@ const LiveSession = ({ presetRoom }) => {
       sender.replaceTrack(screenTrack);
     }
 
-    // 🔁 Replace local preview with the screen stream
+    
     if (localRef.current) {
       localRef.current.srcObject = screenStream;
     }
 
     screenTrack.onended = () => {
-      // Replace with original camera stream
+      
       const videoTrack = localStream.current.getVideoTracks()[0];
       if (sender && videoTrack) {
         sender.replaceTrack(videoTrack);
       }
 
-      // Reset local preview to camera
+      
       if (localRef.current) {
         localRef.current.srcObject = localStream.current;
       }
