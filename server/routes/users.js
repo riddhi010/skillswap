@@ -24,7 +24,7 @@ router.get("/", async (req, res) => {
       .skip(parseInt(skip))
       .limit(parseInt(limit));
 
-    // Also get total count for frontend to know number of pages
+    
     const totalUsers = await User.countDocuments(query);
 
     res.json({
